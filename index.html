@@ -460,6 +460,8 @@
  * RULE 19: Rabbi's Corner Header - "דבר תורה" if has "פרשת", else "הלכה יומית"
  * RULE 20: Weather Display - Open-Meteo API, refresh 15 min
  * RULE 21: Tachanun Reason (Col T) - Sub text for multiple priorities
+ * RULE 22: "ותודיענו" - Motzei Shabbat + Yom Tov tomorrow (NOT regular Motzei Shabbat)
+ * RULE 23: "Sponsorship Still Available" - When no donors for Ner or Coffee box
  */
 
 const $ = id => document.getElementById(id);
@@ -656,7 +658,7 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
     }
 
     if (!donors || donors.length === 0) {
-        box.innerHTML = '<div class="donor-entry"><div class="donor-dedication">"Sponsorship Still Available"</div></div>';
+        box.innerHTML = '<div class="donor-entry"><div class="donor-dedication">Sponsorship Still Available</div></div>';
         return;
     }
 
@@ -1030,7 +1032,14 @@ function updateUI() {
             cls = "gold-box";
         }
     } else if (isMotz) {
-        if (hText !== "") {
+        // RULE 22: "ותודיענו" - Only when Motzei Shabbat + Yom Tov tomorrow
+        let dNextDay = schedule[getIso(new Date(now.getTime() + 86400000))];
+        let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
+        
+        if (nextDayIsYomTov && hText) {
+            // Tomorrow is Yom Tov — show holiday with ותודיענו
+            head = hText; sub = "ותודיענו"; cls = "teal-box";
+        } else if (hText !== "") {
             if (hText.includes("ראש חודש")) {
                 head = hText; sub = "יעלה ויבא"; cls = "teal-box";
             } else {
