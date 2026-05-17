@@ -126,6 +126,14 @@
     flex: 1; display: flex; gap: 8px; overflow: hidden; min-height: 0;
   }
 
+  .zemanim-header {
+    background: var(--gold); color: #000;
+    font-size: 2.4vh; font-weight: 700;
+    text-align: center; padding: 2px 8px;
+    border-radius: 8px 8px 0 0; flex-shrink: 0;
+    letter-spacing: 0.03em;
+    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
+  }
   /* ── ZEMANIM ─────────────────────────────────────────────────── */
   .zemanim-col {
     width: 23vw; border: 2px solid var(--gold); border-radius: 10px;
@@ -426,6 +434,7 @@
 
     <!-- 1. ZEMANIM — rebuilt dynamically and sorted by time -->
     <div class="zemanim-col" id="ZMANIM_LIST">
+      <div class="zemanim-header">זמני היום</div>
     </div>
 
     <!-- 2. PORTRAIT IMAGE — single static image, no rotation -->
@@ -1014,7 +1023,7 @@ function updateUI() {
     // Render — only rebuild DOM if day changed or highlight changed
     if (dIso !== lastZmanim || nextId !== currentlyHighlightedId) {
         lastZmanim = dIso + '_' + nextId;
-        EL['ZMANIM_LIST'].innerHTML = zRows.map(z => {
+        EL['ZMANIM_LIST'].innerHTML = '<div class="zemanim-header">זמני היום</div>' + zRows.map(z => {
             let isActive  = (z.id === nextId);
             let rowStyle  = isActive ? '' : (z.style || '');
             let rowClass  = isActive ? 'z-row active-zman' : 'z-row';
