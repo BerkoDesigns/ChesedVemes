@@ -259,6 +259,7 @@
     font-family: 'Assistant', sans-serif;
     font-size: 8vh; font-weight: 700;
     transition: all 2.0s ease-in-out; white-space: nowrap;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
   }
 
   /* ── DELETE CONFIRMATION MODAL ─────────────────────────────────── */
@@ -655,7 +656,7 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
     }
 
     if (!donors || donors.length === 0) {
-        box.innerHTML = '<div class="donation-empty">לא הוזן תוכן לחודש זה</div>';
+        box.innerHTML = '<div class="donor-entry"><div class="donor-dedication">"Sponsorship Still Available"</div></div>';
         return;
     }
 
