@@ -746,7 +746,18 @@ function updateUI() {
     } else { EL['SLEEP_OVERLAY'].style.display = 'none'; }
 
     const THREE_AM = 10800;
-    let dIso = (cSec < THREE_AM) ? getIso(new Date(now.getTime() - 86400000)) : getIso(now);
+    // FLIP TO SHABBAT AT CANDLE LIGHTING (Friday) or after 3 AM (other days)
+    let dIso;
+    if (dayW === 5) {
+        // Friday: flip at candle lighting
+        let candleTime = (dToday.candle || "").trim();
+        let candleSecs = candleTime ? getSec(candleTime, false) : 0;
+        if (candleSecs < 43200) candleSecs += 43200; // Handle 12-hour format
+        dIso = (cSec >= candleSecs && candleSecs > 0) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
+    } else {
+        // Other days: flip at 3 AM
+        dIso = (cSec < THREE_AM) ? getIso(new Date(now.getTime() - 86400000)) : getIso(now);
+    }
     let dDate = schedule[dIso] || dToday;
 
     let rtSecs = getSec(dToday.z[10], true);
@@ -859,32 +870,9 @@ function updateUI() {
     }
 
     let moledText   = dDate.moledDisplay || "";  // Column Y - Molad Display
-    let isMoledTime = (cSec >= 32400 && cSec <= 45000); // 9:00 AM – 12:30 PM
+    let isMoledTime = (cSec >= 28800 && cSec <= 41400); // 8:00 AM – 11:30 AM
     let isShabbat   = (dayW === 6);
     let isMoledDisplay = isMoledTime && isShabbat && moledText !== "";
-    
-    // ROSH CHODESH: Look ahead for Shabbat Mevarchim
-    let rochDayNames = "";
-    if (isShabbat && holidayText && holidayText.includes("מברכים")) {
-        let rochDays = [];
-        for (let i = 1; i <= 8; i++) {
-            let futureDate = new Date(now.getTime() + (i * 86400000));
-            let futureIso = getIso(futureDate);
-            let futureData = schedule[futureIso];
-            if (futureData && futureData.holidayText && futureData.holidayText.includes("ראש חודש")) {
-                rochDays.push(DAY_NAMES[futureDate.getDay()]);
-            }
-        }
-        if (rochDays.length === 1) {
-            rochDayNames = rochDays[0];
-        } else if (rochDays.length === 2) {
-            rochDayNames = rochDays[0] + " ו" + rochDays[1];
-        } else if (rochDays.length > 2) {
-            rochDayNames = rochDays.slice(0, -1).join(", ") + " ו" + rochDays[rochDays.length - 1];
-        }
-        isMoledDisplay = true;
-        moledText = rochDayNames;
-    }
     
     let omerKey     = dOmer.omerNum ? String(dOmer.omerNum).trim() : null;
     let summerMsg   = dOmer.clmF || defaultSummerMsg;
@@ -925,7 +913,20 @@ function updateUI() {
     }
 
     let tR    = (dDate.tachReason || "").trim();
-    let hText = (holidayText || "").trim();
+    // STATUS BOX: Use different flip logic
+    let statusIso;
+    if (dayW === 6 && cSec >= rtSecs) {
+        // Saturday after Rabbeinu Tam - show Sunday's data
+        statusIso = getIso(new Date(now.getTime() + 86400000));
+    } else if (dayW !== 5 && holidayText && holidayText.includes("ערב") && candleTime && cSec >= candleSecs) {
+        // Weekday Erev at candlelighting - flip to next day
+        statusIso = getIso(new Date(now.getTime() + 86400000));
+    } else {
+        // Use the normal dIso flip (Friday candlelighting or 3 AM other days)
+        statusIso = dIso;
+    }
+    let statusDate = schedule[statusIso] || dToday;
+    let hText = (statusDate.holidayText || "").trim();  // Use status flip date's holiday text
     let candleSecs = getCandleSec(candleTime);
     let isShab   = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < rtSecs);
     let isYomTov = (dToday.yomtov === "Y");
@@ -1044,9 +1045,13 @@ function updateUI() {
             cls = "gold-box";
         }
     } else if (isMotz) {
-        // Motzei Shabbos — Col D text shows with ותודיענו, otherwise אתה חוננתנו
+        // Motzei Shabbos — Check if it's Rosh Chodesh or other holiday
         if (hText !== "") {
-            head = hText; sub = "ותודיענו"; cls = "teal-box";
+            if (hText.includes("ראש חודש")) {
+                head = hText; sub = "יעלה ויבא"; cls = "teal-box";
+            } else {
+                head = hText; sub = "ותודיענו"; cls = "teal-box";
+            }
         } else {
             head = "מוצאי שבת"; sub = "אתה חוננתנו";
         }
@@ -1209,4 +1214,3 @@ setInterval(updateUI, 1000); updateUI();
 </script>
 </body>
 </html>
-
