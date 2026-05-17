@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>קהל חסד ואמת – Master Board</title>
-<!-- Version 2.9 – May 2026 | Cream color scheme -->
+<!-- Version 3.0 – May 2026 | Cream color scheme + Daf Yomi -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -38,10 +38,25 @@
     direction: ltr; font-weight: 700; white-space: nowrap;
   }
   #WEATHER { color: var(--dim); }
-  #BSD {
+  #RIGHT_SIDE {
     position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+    display: flex; align-items: center; gap: 14px; direction: rtl;
+  }
+  #BSD {
     font-size: 2.8vh; color: var(--gold-dark);
     font-family: 'Assistant', 'Arial Hebrew', sans-serif; font-weight: 700;
+  }
+  #DAF_YOMI {
+    font-size: 2.2vh; color: #1a3a32;
+    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
+    font-weight: 700; white-space: nowrap; direction: rtl;
+    background: #A8D5CC;
+    padding: 2px 10px;
+    border-radius: 5px;
+    border: 1px solid #7bbfb5;
+  }
+  #DAF_YOMI .daf-label {
+    color: #3D6B60; font-weight: 400; margin-left: 6px;
   }
 
   /* ── CLOCK SECTION ───────────────────────────────────────────── */
@@ -195,7 +210,25 @@
     word-wrap: break-word; overflow: visible;
   }
 
-  /* ── DONATION COLUMN — 22vw ──────────────────────────────────── */
+  .daf-box {
+    flex-shrink: 0;
+    border: 2px solid #7bbfb5; border-radius: 10px;
+    background: #A8D5CC;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 5px 8px; text-align: center;
+    gap: 1px;
+  }
+  .daf-box-label {
+    font-size: 2.2vh; color: #3D6B60; font-weight: 600;
+    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
+    line-height: 1;
+  }
+  .daf-box-text {
+    font-size: 3.0vh; color: #1a3a32; font-weight: 700;
+    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
+    line-height: 1.2; direction: rtl;
+  }
   .donation-col {
     width: 22vw; flex-shrink: 0;
     display: flex; flex-direction: column;
@@ -371,7 +404,10 @@
   <div class="branding-bar">
     <div id="ENG_SIDE"><span id="ENG_DATE"></span><span id="WEATHER"></span></div>
     <div class="branding-shul">קהל חסד ואמת</div>
-    <div id="BSD">בס"ד</div>
+    <div id="RIGHT_SIDE">
+      <span id="BSD">בס"ד</span>
+      <span id="DAF_YOMI"></span>
+    </div>
   </div>
 
   <div class="clock-section">
@@ -528,7 +564,91 @@ const DAY_NAMES = {
   6: "שבת"
 };
 
-// ── HELPERS ───────────────────────────────────────────────────────
+// ── DAF YOMI ──────────────────────────────────────────────────────
+// Cycle 15 started Jan 5, 2020 (day 1 = Niddah 2)
+const DAF_YOMI_CYCLE_START = new Date('2020-01-05T00:00:00');
+const DAF_YOMI_TRACTATES = [
+  // [Hebrew name, number of dapim (starting from daf 2)]
+  ["ברכות",        63],
+  ["שבת",          156],
+  ["עירובין",      104],
+  ["פסחים",        120],
+  ["שקלים",        21],
+  ["יומא",         87],
+  ["סוכה",         55],
+  ["ביצה",         39],
+  ["ראש השנה",     34],
+  ["תענית",        30],
+  ["מגילה",        31],
+  ["מועד קטן",     28],
+  ["חגיגה",        26],
+  ["יבמות",        121],
+  ["כתובות",       111],
+  ["נדרים",        90],
+  ["נזיר",         65],
+  ["סוטה",         48],
+  ["גיטין",        89],
+  ["קידושין",      81],
+  ["בבא קמא",      118],
+  ["בבא מציעא",    118],
+  ["בבא בתרא",     175],
+  ["סנהדרין",      112],
+  ["מכות",         23],
+  ["שבועות",       48],
+  ["עבודה זרה",    75],
+  ["הוריות",       13],
+  ["זבחים",        119],
+  ["מנחות",        109],
+  ["חולין",        141],
+  ["בכורות",       60],
+  ["ערכין",        33],
+  ["תמורה",        33],
+  ["כריתות",       27],
+  ["מעילה",        21],
+  ["קינים",        3],
+  ["תמיד",         9],
+  ["מידות",        3],
+  ["נידה",         72]
+];
+const DAF_YOMI_TOTAL = DAF_YOMI_TRACTATES.reduce((s, t) => s + t[1], 0); // 2711
+
+function numToHebGematria(n) {
+  const vals = [400,300,200,100,90,80,70,60,50,40,30,20,10,9,8,7,6,5,4,3,2,1];
+  const lets = ['ת','ש','ר','ק','צ','פ','ע','ס','נ','מ','ל','כ','י','ט','ח','ז','ו','ה','ד','ג','ב','א'];
+  let result = '', rem = n;
+  // avoid 15 (טו) and 16 (טז) for religious reasons
+  if (rem === 15) return 'ט״ו';
+  if (rem === 16) return 'ט״ז';
+  for (let i = 0; i < vals.length; i++) {
+    while (rem >= vals[i]) { result += lets[i]; rem -= vals[i]; }
+  }
+  if (result.length === 1) return result + '׳';
+  return result.slice(0, -1) + '״' + result.slice(-1);
+}
+
+function getTodayDafYomi() {
+  const now = new Date();
+  const msPerDay = 86400000;
+  const dayNum = Math.floor((now - DAF_YOMI_CYCLE_START) / msPerDay); // 0-indexed
+  const cycleDay = ((dayNum % DAF_YOMI_TOTAL) + DAF_YOMI_TOTAL) % DAF_YOMI_TOTAL;
+  let remaining = cycleDay;
+  for (const [name, count] of DAF_YOMI_TRACTATES) {
+    if (remaining < count) {
+      const dafNum = remaining + 2; // dapim start at 2
+      return name + ' ' + numToHebGematria(dafNum);
+    }
+    remaining -= count;
+  }
+  return '';
+}
+
+function updateDafYomi() {
+  const el = document.getElementById('DAF_YOMI');
+  if (!el) return;
+  const daf = getTodayDafYomi();
+  el.innerHTML = '<span class="daf-label">דף היומי</span>' + daf;
+}
+
 function shiftTime(t, o) {
     if (!t || t.includes("--")) return "--:--:--";
     let clean = t.replace(/(AM|PM|am|pm)/g,"").trim();
@@ -1185,6 +1305,7 @@ setInterval(updateClock, 1000); updateClock();
 loadWeather(); setInterval(loadWeather, 900000);
 loadData();    setInterval(loadData, 30000);
 setInterval(updateUI, 1000); updateUI();
+updateDafYomi();
 </script>
 </body>
 </html>
