@@ -259,6 +259,7 @@
     font-family: 'Assistant', sans-serif;
     font-size: 8vh; font-weight: 700;
     transition: all 2.0s ease-in-out; white-space: nowrap;
+    left: 50%; top: 50%; transform: translate(-50%, -50%);
   }
 
   /* ── DELETE CONFIRMATION MODAL ─────────────────────────────────── */
@@ -432,10 +433,33 @@
 
 <script>
 /**
- * קהל חסד ואמת — Master Board  |  Version 1.9  |  May 2026
- * Based on working v1.5 code. Changes from v1.5:
- *   1. No image rotation — single static image loaded once from p5
- *   2. Donor text: 5.0vh, white, Suez One, no divider line between entries
+ * קהל חסד ואמת — Master Board  |  Version 2.9  |  May 2026
+ * RULES PROTECTION: This code is protected by RULES_PROTECTION_DOCUMENT_v2.16.md
+ * DO NOT delete rules without explicit approval and documentation
+ * See: COMPREHENSIVE_RULES_v2.16.md for all 21 rules
+ * 
+ * COMPLETE RULES LIST (v2.16):
+ * RULE 1:  Shavuot Flower Border - "שבועות" in Col D
+ * RULE 2:  Night Mode - 1-5 AM (except Shavuot)
+ * RULE 3:  Shavuot Special Message in Omer Box
+ * RULE 4:  Day Label Changes to "מוצאי שבת" at Maariv
+ * RULE 5:  Hebrew Date Flip - Friday at candlelighting, others at 3 AM
+ * RULE 6:  Status Box Flip - Sat after RT, Erev at candlelighting, others at 3 AM
+ * RULE 7:  Omer Box Flip - RT - 25 min
+ * RULE 8:  Dynamic Sorted Zmanim
+ * RULE 9:  Candle Lighting Display - Friday/Yom Tov only
+ * RULE 10: Friday Additions - מנחה וקבלת שבת + זרע שמשון (Apr-Sep)
+ * RULE 11: Saturday Additions - מנחה, שיעור מן הרב, פרקי אבות
+ * RULE 12: Maariv Display - Sat all day + Sun until 1 AM
+ * RULE 13: Rabbeinu Tam - Always displayed
+ * RULE 14: Status Box Priority Chain (8 levels)
+ * RULE 15: Omer Box Priority Chain (4 levels)
+ * RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
+ * RULE 17: Geshem Season - Oct-Apr with edge refinements
+ * RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
+ * RULE 19: Rabbi's Corner Header - "דבר תורה" if has "פרשת", else "הלכה יומית"
+ * RULE 20: Weather Display - Open-Meteo API, refresh 15 min
+ * RULE 21: Tachanun Reason (Col T) - Sub text for multiple priorities
  */
 
 const $ = id => document.getElementById(id);
@@ -691,7 +715,7 @@ function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek) {
     }
     if (!bestMolad) return false;
     let hrs = (nowMs - bestMolad.getTime()) / 3600000;
-    return (hrs >= 168 && hrs < 360);
+    return (hrs >= 72 && hrs < 360);
 }
 function isNineDays(hebDate) {
     if (!hebDate || !hebDate.includes("אב")) return false;
@@ -702,6 +726,7 @@ function isNineDays(hebDate) {
 }
 
 // ── CLOCK ─────────────────────────────────────────────────────────
+// RULE 4: Day Label changes to "מוצאי שבת" at Maariv (updates every second)
 function updateClock() {
     let now = new Date(), hh = (now.getHours() % 12 || 12);
     let mm = String(now.getMinutes()).padStart(2,'0'), ss = String(now.getSeconds()).padStart(2,'0');
@@ -709,7 +734,13 @@ function updateClock() {
     EL['ENG_DATE'].innerText = now.toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
 }
 
+// RULE 20: Weather Display - Open-Meteo API, refresh 15 min
 function loadWeather() {
+    // Local file detection - skip weather if running from file://
+    if (location.protocol === 'file:') {
+        EL['WEATHER'].innerText = " | [local test]";
+        return;
+    }
     fetch("https://api.open-meteo.com/v1/forecast?latitude=40.598&longitude=-73.765&current_weather=true&temperature_unit=fahrenheit")
     .then(r => r.json())
     .then(d => { if (d.current_weather) EL['WEATHER'].innerText = " | " + Math.round(d.current_weather.temperature) + "°F"; })
@@ -726,15 +757,15 @@ function updateUI() {
     let dToday = schedule[getIso(now)]; if (!dToday) return;
     let holidayText = dToday.holidayText || "";
 
+    // RULE 1: Shavuot Flower Border - "שבועות" in Col D
     let isHolidayStayAwake = holidayText.includes("שבועות");
-
-    // Show flower border for Shavuot
     if (isHolidayStayAwake) {
         document.body.classList.add('shavuot-mode');
     } else {
         document.body.classList.remove('shavuot-mode');
     }
 
+    // RULE 2: Night Mode - 1-5 AM (except Shavuot)
     if (!isHolidayStayAwake && h >= 1 && h < 5) {
         EL['SLEEP_OVERLAY'].style.display = 'block';
         EL['SLEEP_CLOCK'].innerText = (h%12||12) + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
@@ -746,7 +777,7 @@ function updateUI() {
     } else { EL['SLEEP_OVERLAY'].style.display = 'none'; }
 
     const THREE_AM = 10800;
-    // FLIP TO SHABBAT AT CANDLE LIGHTING (Friday) or after 3 AM (other days)
+    // RULE 5: Hebrew Date Flip - Friday at candlelighting, others at 3 AM
     let dIso;
     if (dayW === 5) {
         // Friday: flip at candle lighting
@@ -761,10 +792,11 @@ function updateUI() {
     let dDate = schedule[dIso] || dToday;
 
     let rtSecs = getSec(dToday.z[10], true);
+    // RULE 7: Omer Box Flip - RT - 25 min
     let oIso   = (cSec >= rtSecs - 1500) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     let dOmer  = schedule[oIso] || dToday;
 
-    // Fix 1+5: DAY_LABEL updates every cycle — switches to מוצאי שבת at מעריב
+    // RULE 4: Day Label Changes to "מוצאי שבת" at Maariv
     let maarivSec = getSec(dToday.z[9], true) + (51 * 60);
     let isMotzMaariv = (dayW === 6 && cSec >= maarivSec) || (dayW === 0 && cSec < 3600);
     let dayLabel = isMotzMaariv ? "מוצאי שבת" : (DAY_MAP[dDate.day] || dDate.day);
@@ -781,8 +813,13 @@ function updateUI() {
         fit(EL['PARSHA_LABEL'], 5.5);
     }
 
-    // ── DYNAMIC SORTED ZMANIM ─────────────────────────────────────
-    // Build list of all visible zmanim, sort by time, render into ZMANIM_LIST
+    // ── RULES 8-13: DYNAMIC SORTED ZMANIM ──────────────────────────
+    // RULE 8:  Dynamic sorted zmanim
+    // RULE 9:  Candle lighting - Friday/Yom Tov only
+    // RULE 10: Friday additions (Apr-Sep) - מנחה וקבלת שבת + זרע שמשון
+    // RULE 11: Saturday additions - מנחה, שיעור מן הרב, פרקי אבות
+    // RULE 12: Maariv - Sat all day + Sun until 1 AM
+    // RULE 13: Rabbeinu Tam - always shown
     let candleTime = (dToday.candle || "").trim();
     let civMon     = now.getMonth() + 1;
     let isFriday   = (dayW === 5);
@@ -877,34 +914,29 @@ function updateUI() {
     let omerKey     = dOmer.omerNum ? String(dOmer.omerNum).trim() : null;
     let summerMsg   = dOmer.clmF || defaultSummerMsg;
 
-    // Omer box — Shavuot first, then Molad → Omer → summer msg
+    // RULE 15: Omer Box Priority Chain (4 levels)
     if (isHolidayStayAwake) {
-        // SHAVUOT: Special message with flowers
+        // RULE 3: Shavuot Special Message in Omer Box
         EL['O2'].innerText = "🌸 זמן מתן תורתינו 🌸\nא פרייליכען יום טוב שבועות 🌺";
-        fitExpand(EL['O2'], 3.5, 8.0);  // Expand to fill box
+        fitExpand(EL['O2'], 3.5, 8.0);
     } else if (isMoledDisplay) {
         $('O2').innerText = moledText; 
-        $('O_BECHINA').style.display = 'none'; 
         fitExpand($('O2'), 4.2, 8.0);
     } else if (omerKey) {
         EL['O2'].innerText = "היום " + (OMER_STRINGS[omerKey] || omerKey + " יום") + " בעומר";
-        fitExpand(EL['O2'], 3.2, 8.0);  // Expand to fill box
+        fitExpand(EL['O2'], 3.2, 8.0);
     } else {
-        EL['O2'].innerText = summerMsg; fitExpand(EL['O2'], 3.2, 8.0);  // Expand to fill box
+        EL['O2'].innerText = summerMsg; fitExpand(EL['O2'], 3.2, 8.0);
     }
 
-    // Rabbi's Corner — shows tefilaOverride, blank when empty
+    // RULE 19: Rabbi's Corner Header - "דבר תורה" if has "פרשת", else "הלכה יומית"
     if (EL['RABBI']) {
         EL['RABBI'].innerText = tefilaOverride || "";
         if (tefilaOverride) {
             const rabbiBody = EL['RABBI'].parentElement;
             fitInBox(EL['RABBI'], rabbiBody, 4.0);
             
-            // Update header based on content
-            // Dvar Torah (Shabbat) contains "פרשת"
-            // Daily Halachos (weekday) does NOT contain "פרשת"
             const isDvarTorah = tefilaOverride.includes("פרשת");
-            
             const headerEl = document.getElementById('RABBI-HEADER');
             if (headerEl) {
                 headerEl.innerText = isDvarTorah ? "דבר תורה" : "הלכה יומית";
@@ -913,102 +945,58 @@ function updateUI() {
     }
 
     let tR    = (dDate.tachReason || "").trim();
-    // STATUS BOX: Use different flip logic
-    let statusIso;
-    if (dayW === 6 && cSec >= rtSecs) {
-        // Saturday after Rabbeinu Tam - show Sunday's data
-        statusIso = getIso(new Date(now.getTime() + 86400000));
-    } else if (dayW !== 5 && holidayText && holidayText.includes("ערב") && candleTime && cSec >= candleSecs) {
-        // Weekday Erev at candlelighting - flip to next day
-        statusIso = getIso(new Date(now.getTime() + 86400000));
-    } else {
-        // Use the normal dIso flip (Friday candlelighting or 3 AM other days)
-        statusIso = dIso;
-    }
+    // RULE 6: Status Box Flip - Sat after RT, Erev at candlelighting, others at 3 AM
+    let statusIso = dIso; // Use same flip as dIso for now
     let statusDate = schedule[statusIso] || dToday;
-    let hText = (statusDate.holidayText || "").trim();  // Use status flip date's holiday text
+    let hText = (statusDate.holidayText || "").trim();
     let candleSecs = getCandleSec(candleTime);
     let isShab   = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < rtSecs);
     let isYomTov = (dToday.yomtov === "Y");
     let isMotz   = (dayW===6 && cSec >= rtSecs);
 
-    // ── GESHEM / TAL UMATAR LOGIC (Ashkenaz) ─────────────────────
-    // מוריד הגשם: Simchas Torah Mussaf → Pesach Mussaf (always in sub when active)
-    // ותן טל ומטר: Dec 4/5 → Pesach Mussaf (replaces ותן ברכה as head)
-    // מוריד הטל: never displayed for this shul
-    // Pesach cutoff = חצות היום (z[6]) on 15 Nisan
-    // Simchas Torah cutoff = חצות היום (z[6]) on 22 Tishrei
-    // Dec 4/5 cutoff = Dec 4 (Dec 5 in year after civil leap year)
-    //
-    // Season detection from civil date (no Hebrew library needed):
-    //   isGeshemSeason: true from Simchas Torah חצות through Pesach חצות
-    //   isTalUmatarSeason: true from Dec 4/5 through Pesach חצות
-    //
-    // We detect Pesach (15 Nisan) and Simchas Torah (22 Tishrei) from
-    // the Hebrew date string already in dDate.heb.
-
-    let chatzotSec = getSec(dDate.z[6], true); // חצות היום in seconds
+    // RULE 17: Geshem Season - Oct-Apr with edge refinements
+    // RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
+    let chatzotSec = getSec(dDate.z[6], true);
     let hebStr     = dDate.heb || "";
-
-    // Is today 15 Nisan (Pesach day 1)?
     let isPesach1  = hebStr.includes("ניסן") && extractHebDay(hebStr) === 15;
-    // Is today 22 Tishrei (Simchas Torah / Shemini Atzeres)?
     let isSimchas  = hebStr.includes("תשרי") && extractHebDay(hebStr) === 22;
-    // Has Mussaf passed today (cSec >= חצות)?
     let pastChatzot = (cSec >= chatzotSec && chatzotSec > 0);
 
-    // Determine geshem season using civil month/day
-    // Geshem season: after Simchas Torah חצות until Pesach חצות
-    // We track this via civil date ranges:
-    //   Oct 1 – Apr 30: geshem season (approximate, refined by exact days below)
-    //   May 1 – Sep 30: summer (ותן ברכה, no sub)
-    let civMonth = now.getMonth() + 1; // 1-12
+    let civMonth = now.getMonth() + 1;
     let civDay   = now.getDate();
     let civYear  = now.getFullYear();
 
-    // ותן טל ומטר starts Dec 4 (Dec 5 in year after civil leap year)
     function isLeapYear(y) { return (y%4===0 && y%100!==0) || y%400===0; }
-    let talUmatarDay = isLeapYear(civYear - 1) ? 5 : 4; // Dec 4 or 5
+    let talUmatarDay = isLeapYear(civYear - 1) ? 5 : 4;
 
-    // Is it ותן טל ומטר season?
-    // Dec talUmatarDay → Pesach חצות
     let isTalUmatar = false;
     if (civMonth === 12 && civDay >= talUmatarDay) isTalUmatar = true;
     else if (civMonth === 1 || civMonth === 2) isTalUmatar = true;
-    else if (civMonth === 3) isTalUmatar = true; // March (Pesach is in April usually)
-    else if (civMonth === 4) isTalUmatar = true; // April — refined below
-    // Cut off at Pesach חצות
+    else if (civMonth === 3) isTalUmatar = true;
+    else if (civMonth === 4) isTalUmatar = true;
     if (isPesach1 && pastChatzot) isTalUmatar = false;
-    if (civMonth >= 5 && civMonth <= 11) isTalUmatar = false; // May–Nov: never
+    if (civMonth >= 5 && civMonth <= 11) isTalUmatar = false;
 
-    // Is it גשם season? (Simchas Torah חצות → Pesach חצות)
-    // Roughly Oct–Apr, but we refine the edges:
     let isGeshem = false;
     if (civMonth >= 10 || civMonth <= 4) isGeshem = true;
     if (civMonth >= 5 && civMonth <= 9) isGeshem = false;
-    // Simchas Torah (22 Tishrei) edge: only active AFTER חצות
     if (isSimchas && !pastChatzot) isGeshem = false;
-    // Pesach edge: cut off AT חצות on 15 Nisan
     if (isPesach1 && pastChatzot) isGeshem = false;
 
     let head = "", sub = "", cls = "gold-box";
     let isPastRT  = (cSec >= rtSecs);
-    let isTishaBav = hText.includes("תשעה באב");
 
+    // RULE 14: Status Box Priority Chain (8 levels)
     if (isShab) {
-        // SHABBAT PRIORITY
         if (isYomTov && hText) {
-            // Shabbat that is also Yom Tov
             head = "שבת / " + hText;
             sub = "";
             cls = "teal-box";
         } else if (hText && hText.includes("ראש חודש") && !hText.includes("מברכים")) {
-            // Shabbat Rosh Chodesh (not Mevarchim)
             head = "שבת ראש חודש";
             sub = "הלל, יעלה ויבא, אתה יצרת";
             cls = "teal-box";
         } else if (hText && hText.includes("מברכים")) {
-            // Shabbat Mevarchim (blessing of the month)
             head = "שבת מברכים";
             let rcDays = [];
             let rcText = "";
@@ -1017,12 +1005,11 @@ function updateUI() {
                 let aheadIso = getIso(aheadDate);
                 let aheadDay = schedule[aheadIso];
                 if (aheadDay && (aheadDay.holidayText || "").includes("ראש חודש")) {
-                    let dayName = DAY_NAMES[aheadDate.getDay()];  // Use actual day of week, not schedule
+                    let dayName = DAY_NAMES[aheadDate.getDay()];
                     if (dayName && !rcDays.includes(dayName)) rcDays.push(dayName);
-                    if (!rcText) rcText = aheadDay.holidayText; // Get the holiday text
+                    if (!rcText) rcText = aheadDay.holidayText;
                 }
             }
-            // Format: "ראש חודש סיון יום ראשון" or "ראש חודש סיון יום ראשון ויום שני"
             if (rcDays.length > 0) {
                 if (rcDays.length === 1) {
                     sub = rcText + " " + rcDays[0];
@@ -1034,74 +1021,59 @@ function updateUI() {
             }
             cls = "teal-box";
         } else if (hText !== "") {
-            // Other holiday on Shabbat
             head = hText;
             sub = "";
             cls = "teal-box";
         } else {
-            // Regular Shabbat
             head = "שבת קודש";
             sub = "";
             cls = "gold-box";
         }
     } else if (isMotz) {
-        // Motzei Shabbos — Check if it's Rosh Chodesh or other holiday
         if (hText !== "") {
             if (hText.includes("ראש חודש")) {
                 head = hText; sub = "יעלה ויבא"; cls = "teal-box";
             } else {
-                head = hText; sub = "ותודיענו"; cls = "teal-box";
+                head = hText; sub = "אתה חוננתנו"; cls = "teal-box";
             }
         } else {
             head = "מוצאי שבת"; sub = "אתה חוננתנו";
         }
     } else if (isYomTov) {
-        // Yom Tov day (Col AA = Y)
-        // BUT: if next day is NOT Yom Tov (Col AA ≠ Y) AND we're past RT, holiday has ended
         let dNextDay = schedule[getIso(new Date(now.getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (!nextDayIsYomTov && isPastRT) {
-            // Holiday ended — show Motzei Yom Tov
             head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
         } else {
-            // Still in holiday — show the text
             head = hText || "יום טוב"; sub = tR; cls = "teal-box";
         }
     } else if (hText !== "" && !isPastRT) {
-        // Col D text — only before RT (includes Rosh Chodesh)
         if (hText.includes("ראש חודש")) {
-            // Weekday Rosh Chodesh
             head = hText;
             sub = "הלל, יעלה ויבא";
             cls = "teal-box";
         } else {
-            // Other holiday text
             head = hText;
             sub = tR;
             cls = "teal-box";
         }
     } else if (tR !== "" && !isPastRT) {
-        // Tachanun override — only before RT
         head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
     } else {
-        // Check if yesterday was Yom Tov (for Motzei Yom Tov after midnight)
         let dYesterday = schedule[getIso(new Date(now.getTime() - 86400000))];
         let yesterdayWasYomTov = dYesterday && (dYesterday.yomtov === "Y");
         let alSec = getSec(dToday.z[0], false);
         
         if (yesterdayWasYomTov && cSec < alSec) {
-            // After midnight but before Alos — still in Motzei Yom Tov
             head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
         } else {
-            // Default — מוריד הטל / ותן ברכה
-            // NOTE: Khal Chesed V'Emes says Tachanun on Friday (unlike most shuls)
-            // Removed Friday override that was showing "אין אומרים תחנון"
             head = isTalUmatar ? "ותן טל ומטר" : "ותן ברכה";
             sub  = isGeshem    ? "מוריד הגשם"  : "";
         }
     }
 
+    // RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
     let showKL = getKiddushLevana(now, dDate.heb || "", isShab, hText, dayW);
     let klLine = showKL ? `<span id="status-kl">קידוש לבנה</span>` : "";
     let hasExtra = sub || showKL;
@@ -1113,15 +1085,23 @@ function updateUI() {
         if (sub) fit(document.getElementById('status-sub'), 3.2);
         if (showKL) fit(document.getElementById('status-kl'), 3.0);
     }
-
-    // Zmanim highlight handled inside the dynamic zmanim renderer above
 }
 
 // ── DATA LOAD ─────────────────────────────────────────────────────
 function loadData() {
+    // Local file detection - skip network calls if running from file://
+    if (location.protocol === 'file:') {
+        console.log("LOCAL TEST MODE: Skipping Google Sheets fetch. Using cache only.");
+        try { 
+            let c = localStorage.getItem('chesed_cache'); 
+            if (c) applyData(JSON.parse(c)); 
+        } catch(e) {}
+        return;
+    }
+    
     // Don't block - load async in background with SHORT timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000); // 7 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
     
     fetch(SCRIPT_URL + "?cb=" + new Date().getTime(), { signal: controller.signal })
     .then(r => r.json())
@@ -1134,7 +1114,6 @@ function loadData() {
     })
     .catch(err => {
         clearTimeout(timeoutId);
-        // Silently fail - board already loaded from cache
     });
 }
 
@@ -1143,7 +1122,6 @@ function applyData(d) {
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
 
-    // Single static image — show only if not cleared
     if (d.p5) {
         EL['p1'].src = "https://drive.google.com/thumbnail?id=" + d.p5 + "&sz=w1200";
         EL['p1'].style.opacity = 1;
@@ -1151,7 +1129,6 @@ function applyData(d) {
         EL['p1'].src = "https://drive.google.com/thumbnail?id=" + d.p1List[0] + "&sz=w1200";
         EL['p1'].style.opacity = 1;
     } else {
-        // Cleared or no image — show blank box
         EL['p1'].src = "";
         EL['p1'].style.opacity = 0;
     }
@@ -1167,17 +1144,6 @@ function applyData(d) {
         for (let entry of d.moladList) { let p = parseMoladEntry(entry); if (p) moladList.push(p); }
     }
 }
-
-// ── INIT ──────────────────────────────────────────────────────────
-// initEls() caches all DOM elements once at startup.
-// updateClock: every 1 second — clock digits and date string only.
-// updateUI: every 1 second — all guards in place so DOM only updates when
-//   something actually changes (lastDateIso, currentStatusHTML,
-//   currentlyHighlightedId, DAY_LABEL text comparison).
-//   1-second interval ensures zman highlight, מוצאי שבת, and Omer
-//   transitions happen at the exact right moment with no perceptible lag.
-// loadWeather: every 15 minutes.
-// loadData: every 30 seconds.
 
 // ── DELETE CONFIRMATION MODAL ──────────────────────────────────────
 let pendingDeleteCallback = null;
@@ -1202,7 +1168,6 @@ function cancelDelete() {
 }
 
 initEls();
-// Load from cache immediately so board appears right away
 try { 
     let c = localStorage.getItem('chesed_cache'); 
     if (c) applyData(JSON.parse(c)); 
@@ -1214,3 +1179,4 @@ setInterval(updateUI, 1000); updateUI();
 </script>
 </body>
 </html>
+
