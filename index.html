@@ -56,7 +56,7 @@
     border: 1px solid #7bbfb5;
   }
   #DAF_YOMI .daf-label {
-    color: #3D6B60; font-weight: 400; margin-left: 6px;
+    color: #1f3d35; font-weight: 400; margin-left: 6px;
   }
 
   /* ── CLOCK SECTION ───────────────────────────────────────────── */
@@ -145,8 +145,8 @@
     padding: 0px 8px; border-bottom: 1px solid #d4cec6;
     align-items: center; flex: 1; overflow: hidden;
   }
-  .z-label { color: var(--gold-dark); font-size: 3.6vh; }
-  .z-time  { color: var(--text); font-size: 3.2vh; font-family: 'Assistant', sans-serif; font-weight: 700; direction: ltr; }
+  .z-label { color: #1f3d35; font-size: 3.6vh; }
+  .z-time  { color: #1a2e28; font-size: 3.2vh; font-family: 'Assistant', sans-serif; font-weight: 700; direction: ltr; }
   .active-zman { background: #A8D5CC !important; }
   .active-zman .z-label, .active-zman .z-time { color: #000 !important; }
 
@@ -279,7 +279,7 @@
     border-bottom: 1px solid #c8b48a;
   }
   .donor-name {
-    color: var(--dim); font-size: 4.2vh; line-height: 1.15;
+    color: #2e4a44; font-size: 4.2vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
     font-weight: 400; word-wrap: break-word; width: 100%;
     padding-top: 3px;
@@ -1194,28 +1194,31 @@ function updateUI() {
         } else {
             head = hText || "יום טוב"; sub = tR; cls = "teal-box";
         }
-    } else if (hText !== "" && !isPastRT) {
-        if (hText.includes("ראש חודש")) {
-            head = hText;
-            sub = "הלל, יעלה ויבא";
-            cls = "teal-box";
-        } else {
-            head = hText;
-            sub = tR;
-            cls = "teal-box";
-        }
-    } else if (tR !== "" && !isPastRT) {
-        head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
     } else {
-        let dYesterday = schedule[getIso(new Date(now.getTime() - 86400000))];
-        let yesterdayWasYomTov = dYesterday && (dYesterday.yomtov === "Y");
-        let alSec = getSec(dToday.z[0], false);
-        
-        if (yesterdayWasYomTov && cSec < alSec) {
-            head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
+        // RULE 14 — Rosh Chodesh stops 25 min before RT on last day
+        let rochCutoff = rtSecs - 1500; // 25 min before RT
+        let todayIsRC  = hText.includes("ראש חודש");
+
+        if (todayIsRC && cSec < rochCutoff) {
+            // Day of Rosh Chodesh — show until 25 min before RT
+            head = hText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
+        } else if (hText !== "" && !isPastRT && !todayIsRC) {
+            // Other holiday text before RT
+            head = hText; sub = tR; cls = "teal-box";
+        } else if (tR !== "" && !isPastRT) {
+            // Tachanun override before RT
+            head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
         } else {
-            head = isTalUmatar ? "ותן טל ומטר" : "ותן ברכה";
-            sub  = isGeshem    ? "מוריד הגשם"  : "";
+            // Default
+            let dYesterday = schedule[getIso(new Date(now.getTime() - 86400000))];
+            let yesterdayWasYomTov = dYesterday && (dYesterday.yomtov === "Y");
+            let alSec = getSec(dToday.z[0], false);
+            if (yesterdayWasYomTov && cSec < alSec) {
+                head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
+            } else {
+                head = isTalUmatar ? "ותן טל ומטר" : "ותן ברכה";
+                sub  = isGeshem    ? "מוריד הגשם"  : "";
+            }
         }
     }
 
