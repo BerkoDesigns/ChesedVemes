@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>קהל חסד ואמת – Master Board</title>
-<!-- Version 3.0 – May 2026 | Cream color scheme + Daf Yomi -->
+<!-- Version 3.1 – May 2026 | Cream color scheme + Daf Yomi + Motzei Shabbat fix -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -1077,13 +1077,21 @@ function updateUI() {
 
     let tR    = (dDate.tachReason || "").trim();
     // RULE 6: Status Box Flip - Sat after RT, Erev at candlelighting, others at 3 AM
-    let statusIso = dIso; // Use same flip as dIso for now
+    // FIX (May 2026): isMotz now extends through Sunday 3 AM to prevent snap-back to
+    // Saturday data at midnight. statusIso also corrected for that window.
+    let isMotz   = (dayW===6 && cSec >= rtSecs) || (dayW===0 && cSec < THREE_AM);
+    let statusIso;
+    if (dayW===0 && cSec < THREE_AM) {
+        // Sunday before 3 AM — still Motzei Shabbat, point to Sunday's data
+        statusIso = getIso(now);
+    } else {
+        statusIso = dIso; // All other cases use same flip as dIso
+    }
     let statusDate = schedule[statusIso] || dToday;
     let hText = (statusDate.holidayText || "").trim();
     let candleSecs = getCandleSec(candleTime);
     let isShab   = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < rtSecs);
     let isYomTov = (dToday.yomtov === "Y");
-    let isMotz   = (dayW===6 && cSec >= rtSecs);
 
     // RULE 17: Geshem Season - Oct-Apr with edge refinements
     // RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
