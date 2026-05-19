@@ -972,6 +972,7 @@ function updateUI() {
     let isSaturday = (dayW === 6);
     let isMinchaFriSeason = (civMon >= 4 && civMon <= 9);
     let isPirkeySeason    = (civMon >= 4 && civMon <= 9);
+    let isYomTov  = (dToday.yomtov === "Y"); // used for zmanim additions; redefined below for status box
 
     // Each entry: { id, label, timeStr, secVal, style }
     let zRows = [
@@ -995,16 +996,16 @@ function updateUI() {
     // שקיעה
     zRows.push({ id:'r10', label:'שקיעת החמה', timeStr: dDate.z[9], secVal: getSec(dDate.z[9], true) });
 
-    // Friday: מנחה וקבלת שבת + זרע שמשון
-    if (isFriday && isMinchaFriSeason) {
+    // Friday: מנחה וקבלת שבת + זרע שמשון — skip on Erev Shabbat Yom Tov
+    if (isFriday && isMinchaFriSeason && !isYomTov) {
         zRows.push({ id:'r_fri_mincha', label:'מנחה וקבלת שבת', timeStr:'7:00:00',
             secVal: 19*3600 });
         zRows.push({ id:'r_zera', label:'זרע שמשון', timeStr:'6:40:00',
             secVal: 18*3600 + 40*60 });
     }
 
-    // Saturday: מנחה, שיעור מן הרב, פרקי אבות
-    if (isSaturday) {
+    // Saturday: מנחה, שיעור מן הרב, פרקי אבות — skip on Shabbat Yom Tov
+    if (isSaturday && !isYomTov) {
         let shabMinchaTime = shiftTime(dDate.z[9], -28);
         let shiurTime      = shiftTime(dDate.z[9], -88);
         zRows.push({ id:'r_shab_mincha', label:'מנחה',           timeStr: shabMinchaTime, secVal: getSec(dDate.z[9], true) - 28*60 });
@@ -1090,7 +1091,6 @@ function updateUI() {
         }
     }
 
-    let tR    = (dDate.tachReason || "").trim();
     // RULE 6: Status Box Flip - Sat after RT, Erev at candlelighting, others at 3 AM
     // FIX (May 2026): isMotz now extends through Sunday 3 AM to prevent snap-back to
     // Saturday data at midnight. statusIso also corrected for that window.
@@ -1106,7 +1106,9 @@ function updateUI() {
     let hText = (statusDate.holidayText || "").trim();
     let candleSecs = getCandleSec(candleTime);
     let isShab   = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < rtSecs);
-    let isYomTov = (dToday.yomtov === "Y");
+    let isYomTovStatus = (statusDate.yomtov === "Y");
+    let tR = (schedule[statusIso] ? (schedule[statusIso].tachReason || "") : (dDate.tachReason || "")).trim();
+    if (!tR) tR = (dToday.tachReason || "").trim(); // fallback to today's tachanun reason
 
     // RULE 17: Geshem Season - Oct-Apr with edge refinements
     // RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
@@ -1142,7 +1144,7 @@ function updateUI() {
 
     // RULE 14: Status Box Priority Chain (8 levels)
     if (isShab) {
-        if (isYomTov && hText) {
+        if (isYomTovStatus && hText) {
             head = "שבת / " + hText;
             sub = "";
             cls = "teal-box";
@@ -1200,7 +1202,7 @@ function updateUI() {
         } else {
             head = "מוצאי שבת"; sub = "אתה חוננתנו";
         }
-    } else if (isYomTov) {
+    } else if (isYomTovStatus) {
         let dNextDay = schedule[getIso(new Date(now.getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
