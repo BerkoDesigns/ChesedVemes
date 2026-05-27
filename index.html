@@ -933,7 +933,10 @@ function isNineDays(hebDate) {
     return false;
 }
 
-// ── CLOCK ─────────────────────────────────────────────────────────
+// ── FALLBACK IMAGE ────────────────────────────────────────────────
+// Default portrait image shown when current image expires or is empty
+// Update this ID if the default logo image ever changes in Google Drive
+const DEFAULT_FALLBACK_IMAGE_ID = "1z04hr7NzUepI7EHjujOND1zaxcLzqmyy";
 // RULE 4: Day Label changes to "מוצאי שבת" at Maariv (updates every second)
 function updateClock() {
     let now = new Date(), hh = (now.getHours() % 12 || 12);
@@ -1394,13 +1397,17 @@ function applyData(d) {
     // Cache-buster — changes every 30 seconds so browser always fetches fresh
     const cb = '&t=' + Math.floor(Date.now() / 30000);
 
+    const fallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
+
     const newSrc = (() => {
-        if (imageExpired && d.imageFallbackId)
-            return "https://drive.google.com/thumbnail?id=" + d.imageFallbackId + "&sz=w1200" + cb;
+        if (imageExpired && fallbackId)
+            return "https://drive.google.com/thumbnail?id=" + fallbackId + "&sz=w1200" + cb;
         if (d.p5)
             return "https://drive.google.com/thumbnail?id=" + d.p5 + "&sz=w1200" + cb;
         if (d.p1List && d.p1List.length > 0)
             return "https://drive.google.com/thumbnail?id=" + d.p1List[0] + "&sz=w1200" + cb;
+        if (fallbackId)
+            return "https://drive.google.com/thumbnail?id=" + fallbackId + "&sz=w1200" + cb;
         return "";
     })();
 
