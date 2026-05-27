@@ -1391,19 +1391,23 @@ function applyData(d) {
         if (!isNaN(expiry.getTime()) && now > expiry) imageExpired = true;
     }
 
-    if (imageExpired && d.imageFallbackId) {
-        // Expired — show fallback image
-        EL['p1'].src = "https://drive.google.com/thumbnail?id=" + d.imageFallbackId + "&sz=w1200";
-        EL['p1'].style.opacity = 1;
-    } else if (d.p5) {
-        EL['p1'].src = "https://drive.google.com/thumbnail?id=" + d.p5 + "&sz=w1200";
-        EL['p1'].style.opacity = 1;
-    } else if (d.p1List && d.p1List.length > 0) {
-        EL['p1'].src = "https://drive.google.com/thumbnail?id=" + d.p1List[0] + "&sz=w1200";
-        EL['p1'].style.opacity = 1;
-    } else {
-        EL['p1'].src = "";
-        EL['p1'].style.opacity = 0;
+    // Cache-buster — changes every 30 seconds so browser always fetches fresh
+    const cb = '&t=' + Math.floor(Date.now() / 30000);
+
+    const newSrc = (() => {
+        if (imageExpired && d.imageFallbackId)
+            return "https://drive.google.com/thumbnail?id=" + d.imageFallbackId + "&sz=w1200" + cb;
+        if (d.p5)
+            return "https://drive.google.com/thumbnail?id=" + d.p5 + "&sz=w1200" + cb;
+        if (d.p1List && d.p1List.length > 0)
+            return "https://drive.google.com/thumbnail?id=" + d.p1List[0] + "&sz=w1200" + cb;
+        return "";
+    })();
+
+    if (newSrc !== EL['p1'].dataset.lastSrc) {
+        EL['p1'].dataset.lastSrc = newSrc;
+        EL['p1'].src = newSrc;
+        EL['p1'].style.opacity = newSrc ? 1 : 0;
     }
 
     // ── ANNOUNCEMENT with expiry check ────────────────────────────
