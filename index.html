@@ -1390,7 +1390,9 @@ function applyData(d) {
     const now = new Date();
     let imageExpired = false;
     if (d.imageExpiry) {
-        const expiry = new Date(d.imageExpiry);
+        // Handle formats: "2026-05-27 17:00", "2026-05-27T17:00", ISO string, or Google Sheet date serial
+        const expiry = new Date(String(d.imageExpiry).replace(' ', 'T'));
+        console.log('Image expiry:', d.imageExpiry, '→', expiry, '| Now:', now, '| Expired:', !isNaN(expiry.getTime()) && now > expiry);
         if (!isNaN(expiry.getTime()) && now > expiry) imageExpired = true;
     }
 
@@ -1489,4 +1491,3 @@ function updateFsBtn() {
 </script>
 </body>
 </html>
-
