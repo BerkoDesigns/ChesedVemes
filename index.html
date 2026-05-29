@@ -1199,7 +1199,7 @@ function updateUI() {
                 if (headerEl) headerEl.innerText = "הלכה יומית";
                 rabbiBody.classList.remove("dvar-torah");
             }
-            fitInBox(EL['RABBI'], rabbiBody, 4.0);
+            requestAnimationFrame(() => fitInBox(EL['RABBI'], rabbiBody, 5.5));
         } else {
             EL['RABBI'].innerText = "";
             if (headerEl) headerEl.innerText = "הלכה יומית";
