@@ -1376,7 +1376,7 @@ function applyData(d) {
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
 
-    // RULE 19: Rabbi's Corner — runs once per data load, not every second
+    // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
     const headerEl  = document.getElementById('RABBI-HEADER');
     if (rabbiEl && headerEl) {
@@ -1384,23 +1384,35 @@ function applyData(d) {
         if (tefilaOverride) {
             const isDvarTorah = tefilaOverride.includes("פרשת");
             if (isDvarTorah) {
-                const lines     = tefilaOverride.split("\n");
+                const lines      = tefilaOverride.split("\n");
                 const parshaLine = lines.find(l => l.includes("פרשת")) || "";
                 const parshaName = parshaLine.trim();
-                const bodyText  = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
-                rabbiEl.innerText  = bodyText;
-                headerEl.innerText = "דבר תורה · " + parshaName;
+                const bodyText   = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
                 rabbiBody.classList.add("dvar-torah");
+                if (bodyText !== lastRabbiText) {
+                    lastRabbiText = bodyText;
+                    rabbiEl.innerText  = bodyText;
+                    headerEl.innerText = "דבר תורה · " + parshaName;
+                    rabbiEl.style.fontSize = "";  // clear any previous size
+                    setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 200);
+                }
             } else {
-                rabbiEl.innerText  = tefilaOverride.trim();
+                rabbiBody.classList.remove("dvar-torah");
+                if (tefilaOverride !== lastRabbiText) {
+                    lastRabbiText = tefilaOverride;
+                    rabbiEl.innerText  = tefilaOverride.trim();
+                    headerEl.innerText = "הלכה יומית";
+                    rabbiEl.style.fontSize = "";
+                    setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 200);
+                }
+            }
+        } else {
+            if (lastRabbiText !== "") {
+                lastRabbiText = "";
+                rabbiEl.innerText  = "";
                 headerEl.innerText = "הלכה יומית";
                 rabbiBody.classList.remove("dvar-torah");
             }
-            setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 150);
-        } else {
-            rabbiEl.innerText  = "";
-            headerEl.innerText = "הלכה יומית";
-            rabbiBody.classList.remove("dvar-torah");
         }
     }
 
