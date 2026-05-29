@@ -585,6 +585,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr9nQSnr4zjazj8uT1J
 var defaultSummerMsg = "", shabbosPic = "", tefilaOverride = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
 var currentlyHighlightedId = null;
+var lastRabbiText = null;
 
 const OMER_STRINGS = {
   1:"יום אחד", 2:"שני ימים", 3:"שלשה ימים", 4:"ארבעה ימים", 5:"חמשה ימים",
@@ -1180,7 +1181,9 @@ function updateUI() {
 
     // RULE 19: Rabbi's Corner Header - "דבר תורה · פרשת X" if has "פרשת", else "הלכה יומית"
     // Parsha line is extracted from body and moved to header to gain a line of space
-    if (EL['RABBI']) {
+    // Only re-renders when tefilaOverride text actually changes (not every second)
+    if (EL['RABBI'] && tefilaOverride !== lastRabbiText) {
+        lastRabbiText = tefilaOverride;
         const headerEl = document.getElementById('RABBI-HEADER');
         const rabbiBody = EL['RABBI'].parentElement;
         if (tefilaOverride) {
@@ -1199,7 +1202,7 @@ function updateUI() {
                 if (headerEl) headerEl.innerText = "הלכה יומית";
                 rabbiBody.classList.remove("dvar-torah");
             }
-            requestAnimationFrame(() => fitInBox(EL['RABBI'], rabbiBody, 5.5));
+            setTimeout(() => fitInBox(EL['RABBI'], rabbiBody, 5.5), 150);
         } else {
             EL['RABBI'].innerText = "";
             if (headerEl) headerEl.innerText = "הלכה יומית";
