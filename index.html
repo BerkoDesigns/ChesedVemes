@@ -1176,7 +1176,7 @@ function updateUI() {
 
     // RULE 19: Rabbi's Corner Header - "דבר תורה" if has "פרשת", else "הלכה יומית"
     if (EL['RABBI']) {
-        EL['RABBI'].innerText = tefilaOverride || "";
+        EL['RABBI'].innerText = (tefilaOverride || "").trim();
         if (tefilaOverride) {
             const rabbiBody = EL['RABBI'].parentElement;
             fitInBox(EL['RABBI'], rabbiBody, 4.0);
