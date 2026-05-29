@@ -1179,37 +1179,6 @@ function updateUI() {
         if (amudPillEl) amudPillEl.style.display  = 'none';
     }
 
-    // RULE 19: Rabbi's Corner Header - "דבר תורה · פרשת X" if has "פרשת", else "הלכה יומית"
-    // Parsha line is extracted from body and moved to header to gain a line of space
-    // Only re-renders when tefilaOverride text actually changes (not every second)
-    if (EL['RABBI'] && tefilaOverride !== lastRabbiText) {
-        lastRabbiText = tefilaOverride;
-        const headerEl = document.getElementById('RABBI-HEADER');
-        const rabbiBody = EL['RABBI'].parentElement;
-        if (tefilaOverride) {
-            const isDvarTorah = tefilaOverride.includes("פרשת");
-            if (isDvarTorah) {
-                // Extract parsha line, remove it from body text
-                const lines = tefilaOverride.split("\n");
-                const parshaLine = lines.find(l => l.includes("פרשת")) || "";
-                const parshaName = parshaLine.trim();
-                const bodyText = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
-                EL['RABBI'].innerText = bodyText;
-                if (headerEl) headerEl.innerText = "דבר תורה · " + parshaName;
-                rabbiBody.classList.add("dvar-torah");
-            } else {
-                EL['RABBI'].innerText = tefilaOverride.trim();
-                if (headerEl) headerEl.innerText = "הלכה יומית";
-                rabbiBody.classList.remove("dvar-torah");
-            }
-            setTimeout(() => fitInBox(EL['RABBI'], rabbiBody, 5.5), 150);
-        } else {
-            EL['RABBI'].innerText = "";
-            if (headerEl) headerEl.innerText = "הלכה יומית";
-            rabbiBody.classList.remove("dvar-torah");
-        }
-    }
-
     // RULE 6: Status Box Flip - Sat after RT, Erev at candlelighting, others at 3 AM
     // FIX (May 2026): isMotz now extends through Sunday 3 AM to prevent snap-back to
     // Saturday data at midnight. statusIso also corrected for that window.
@@ -1406,6 +1375,34 @@ function applyData(d) {
     schedule         = d.schedule;
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
+
+    // RULE 19: Rabbi's Corner — runs once per data load, not every second
+    const rabbiEl   = document.getElementById('RABBI');
+    const headerEl  = document.getElementById('RABBI-HEADER');
+    if (rabbiEl && headerEl) {
+        const rabbiBody = rabbiEl.parentElement;
+        if (tefilaOverride) {
+            const isDvarTorah = tefilaOverride.includes("פרשת");
+            if (isDvarTorah) {
+                const lines     = tefilaOverride.split("\n");
+                const parshaLine = lines.find(l => l.includes("פרשת")) || "";
+                const parshaName = parshaLine.trim();
+                const bodyText  = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
+                rabbiEl.innerText  = bodyText;
+                headerEl.innerText = "דבר תורה · " + parshaName;
+                rabbiBody.classList.add("dvar-torah");
+            } else {
+                rabbiEl.innerText  = tefilaOverride.trim();
+                headerEl.innerText = "הלכה יומית";
+                rabbiBody.classList.remove("dvar-torah");
+            }
+            setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 150);
+        } else {
+            rabbiEl.innerText  = "";
+            headerEl.innerText = "הלכה יומית";
+            rabbiBody.classList.remove("dvar-torah");
+        }
+    }
 
     // ── IMAGE with expiry check ───────────────────────────────────
     const now = new Date();
