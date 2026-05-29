@@ -1174,18 +1174,29 @@ function updateUI() {
         if (amudPillEl) amudPillEl.style.display  = 'none';
     }
 
-    // RULE 19: Rabbi's Corner Header - "דבר תורה" if has "פרשת", else "הלכה יומית"
+    // RULE 19: Rabbi's Corner Header - "דבר תורה · פרשת X" if has "פרשת", else "הלכה יומית"
+    // Parsha line is extracted from body and moved to header to gain a line of space
     if (EL['RABBI']) {
-        EL['RABBI'].innerText = (tefilaOverride || "").trim();
+        const headerEl = document.getElementById('RABBI-HEADER');
         if (tefilaOverride) {
+            const isDvarTorah = tefilaOverride.includes("פרשת");
+            if (isDvarTorah) {
+                // Extract parsha line, remove it from body text
+                const lines = tefilaOverride.split("\n");
+                const parshaLine = lines.find(l => l.includes("פרשת")) || "";
+                const parshaName = parshaLine.trim();
+                const bodyText = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
+                EL['RABBI'].innerText = bodyText;
+                if (headerEl) headerEl.innerText = "דבר תורה · " + parshaName;
+            } else {
+                EL['RABBI'].innerText = tefilaOverride.trim();
+                if (headerEl) headerEl.innerText = "הלכה יומית";
+            }
             const rabbiBody = EL['RABBI'].parentElement;
             fitInBox(EL['RABBI'], rabbiBody, 4.0);
-            
-            const isDvarTorah = tefilaOverride.includes("פרשת");
-            const headerEl = document.getElementById('RABBI-HEADER');
-            if (headerEl) {
-                headerEl.innerText = isDvarTorah ? "דבר תורה" : "הלכה יומית";
-            }
+        } else {
+            EL['RABBI'].innerText = "";
+            if (headerEl) headerEl.innerText = "הלכה יומית";
         }
     }
 
