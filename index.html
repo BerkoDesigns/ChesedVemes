@@ -494,9 +494,9 @@
       <div class="zemanim-header">זמני היום</div>
     </div>
 
-    <!-- 2. PORTRAIT IMAGE — single static image, no rotation -->
+    <!-- 2. PORTRAIT IMAGE — rotates through folder images, freezes on Shabbat -->
     <div class="portrait-col">
-      <img id="p1" src="" alt="">
+      <img id="PORT_IMG" src="" alt="" style="transition: opacity 0.8s ease-in-out;">
     </div>
 
     <!-- 3. MIDDLE -->
@@ -576,7 +576,7 @@ function initEls() {
      'ANN','O2','SLEEP_OVERLAY','SLEEP_CLOCK',
      'ENG_DATE','WEATHER','ZMANIM_LIST',
      'NER_BODY','COFFEE_BODY','NER_TITLE','COFFEE_TITLE',
-     'p1','OMER','RABBI'
+     'PORT_IMG','OMER','RABBI'
     ].forEach(id => { EL[id] = document.getElementById(id); });
 }
 
@@ -586,6 +586,8 @@ var defaultSummerMsg = "", shabbosPic = "", tefilaOverride = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
 var currentlyHighlightedId = null;
 var lastRabbiText = null;
+var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
+var p1RotateTimer = null, isShabbosImageActive = false;
 
 const OMER_STRINGS = {
   1:"יום אחד", 2:"שני ימים", 3:"שלשה ימים", 4:"ארבעה ימים", 5:"חמשה ימים",
@@ -951,6 +953,52 @@ function updateClock() {
 }
 
 // RULE 20: Weather Display - Open-Meteo API, refresh 15 min
+// ── IMAGE ROTATION (RULE 34) ───────────────────────────────────────────────
+function rotateP1() {
+    if (p1Images.length === 0 || isShabbosImageActive) return;
+    const img = EL['PORT_IMG'];
+    if (!img) return;
+    // Rotation off — show active/first image only
+    if (!p1Rotation) {
+        const id = activeImageId || p1Images[0] || "";
+        if (id) {
+            img.style.opacity = 0;
+            setTimeout(() => { img.src = "https://drive.google.com/thumbnail?id=" + id + "&sz=w1200"; img.style.opacity = 1; }, 800);
+        }
+        return;
+    }
+    img.style.opacity = 0;
+    setTimeout(() => {
+        img.src = "https://drive.google.com/thumbnail?id=" + p1Images[p1Index] + "&sz=w1200";
+        img.style.opacity = 1;
+        p1Index = (p1Index + 1) % p1Images.length;
+    }, 800);
+}
+
+function updateP1Image(isKodesh) {
+    const img = EL['PORT_IMG'];
+    if (!img) return;
+    if (isKodesh && !isShabbosImageActive) {
+        isShabbosImageActive = true;
+        if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+        img.style.opacity = 0;
+        setTimeout(() => {
+            img.src = shabbosPic
+                ? "https://drive.google.com/thumbnail?id=" + shabbosPic + "&sz=w1200"
+                : "";
+            img.style.opacity = 1;
+        }, 800);
+    } else if (!isKodesh && isShabbosImageActive) {
+        isShabbosImageActive = false;
+        if (p1Images.length > 0 && !p1RotateTimer && p1Rotation) {
+            rotateP1();
+            p1RotateTimer = setInterval(rotateP1, 15000);
+        } else if (!p1Rotation) {
+            rotateP1();
+        }
+    }
+}
+
 function loadWeather() {
     // Local file detection - skip weather if running from file://
     if (location.protocol === 'file:') {
@@ -1195,6 +1243,8 @@ function updateUI() {
     let candleSecs = getCandleSec(candleTime);
     let isShab   = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < rtSecs);
     let isYomTovStatus = (statusDate.yomtov === "Y");
+    let isKodesh = isShab || isYomTovStatus;
+    updateP1Image(isKodesh);
     let tR = (schedule[statusIso] ? (schedule[statusIso].tachReason || "") : (dDate.tachReason || "")).trim();
     if (!tR) tR = (dToday.tachReason || "").trim(); // fallback to today's tachanun reason
 
@@ -1416,40 +1466,42 @@ function applyData(d) {
         }
     }
 
-    // ── IMAGE with expiry check ───────────────────────────────────
-    const now = new Date();
-    let imageExpired = false;
+    // ── IMAGE ROTATION SETUP ──────────────────────────────────────
+    p1Images      = d.p1List      || [];
+    activeImageId = d.activeImageId || "";
+    shabbosPic    = d.shabbosPic   || "";
+    p1Rotation    = d.p1Rotation !== false;
+
+    // Handle image expiry — if expired, override activeImageId with fallback
+    const fallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
     if (d.imageExpiry) {
-        // Handle formats: "2026-05-27 17:00", "2026-05-27T17:00", ISO string, or Google Sheet date serial
         const expiry = new Date(String(d.imageExpiry).replace(' ', 'T'));
-        console.log('Image expiry:', d.imageExpiry, '→', expiry, '| Now:', now, '| Expired:', !isNaN(expiry.getTime()) && now > expiry);
-        if (!isNaN(expiry.getTime()) && now > expiry) imageExpired = true;
+        if (!isNaN(expiry.getTime()) && new Date() > expiry) {
+            // Image expired — inject fallback as the only image to show
+            p1Images = fallbackId ? [fallbackId] : [];
+            activeImageId = fallbackId;
+            p1Rotation = false; // show single fallback, no rotation
+        }
+    }
+    // If no images at all, use fallback
+    if (p1Images.length === 0 && fallbackId) {
+        p1Images = [fallbackId];
+        activeImageId = fallbackId;
     }
 
-    // Cache-buster — changes every 30 seconds so browser always fetches fresh
-    const cb = '&t=' + Math.floor(Date.now() / 30000);
-
-    const fallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
-
-    const newSrc = (() => {
-        if (imageExpired && fallbackId)
-            return "https://drive.google.com/thumbnail?id=" + fallbackId + "&sz=w1200" + cb;
-        if (d.p5)
-            return "https://drive.google.com/thumbnail?id=" + d.p5 + "&sz=w1200" + cb;
-        if (d.p1List && d.p1List.length > 0)
-            return "https://drive.google.com/thumbnail?id=" + d.p1List[0] + "&sz=w1200" + cb;
-        if (fallbackId)
-            return "https://drive.google.com/thumbnail?id=" + fallbackId + "&sz=w1200" + cb;
-        return "";
-    })();
-
-    if (newSrc !== EL['p1'].dataset.lastSrc) {
-        EL['p1'].dataset.lastSrc = newSrc;
-        EL['p1'].src = newSrc;
-        EL['p1'].style.opacity = newSrc ? 1 : 0;
+    // Only touch the timer if not currently in Shabbos freeze
+    if (!isShabbosImageActive) {
+        if (!p1Rotation) {
+            if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+            rotateP1();
+        } else if (p1Images.length > 0 && !p1RotateTimer) {
+            rotateP1();
+            p1RotateTimer = setInterval(rotateP1, 15000);
+        }
     }
 
     // ── ANNOUNCEMENT with expiry check ────────────────────────────
+    const now = new Date();
     let annText = d.announcements || "";
     if (annText && d.annExpiry) {
         const annExpiry = new Date(d.annExpiry);
