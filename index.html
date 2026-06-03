@@ -978,24 +978,33 @@ function rotateP1() {
 function updateP1Image(isKodesh) {
     const img = EL['PORT_IMG'];
     if (!img) return;
-    if (isKodesh && !isShabbosImageActive) {
+
+    if (isKodesh) {
+        // Force stop rotation during Kodesh
+        if (p1RotateTimer) {
+            clearInterval(p1RotateTimer);
+            p1RotateTimer = null;
+        }
         isShabbosImageActive = true;
-        if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+        
         img.style.opacity = 0;
         setTimeout(() => {
-            img.src = shabbosPic
-                ? "https://drive.google.com/thumbnail?id=" + shabbosPic + "&sz=w1200"
-                : "";
+            img.src = shabbosPic ? "https://drive.google.com/thumbnail?id=" + shabbosPic + "&sz=w1200" : "";
             img.style.opacity = 1;
         }, 800);
-    } else if (!isKodesh && isShabbosImageActive) {
-        isShabbosImageActive = false;
-        if (p1Images.length > 0 && !p1RotateTimer && p1Rotation) {
-            rotateP1();
-            p1RotateTimer = setInterval(rotateP1, 15000);
-        } else if (!p1Rotation) {
-            rotateP1();
+    } else {
+        // Only restart if it was previously frozen (isShabbosImageActive was true)
+        if (isShabbosImageActive) {
+            isShabbosImageActive = false;
+            // Re-initialize rotation logic
+            if (p1Rotation && p1Images.length > 0) {
+                rotateP1(); // Show first one immediately
+                p1RotateTimer = setInterval(rotateP1, 15000);
+            } else {
+                rotateP1(); // Just show one
+            }
         }
+        // If it wasn't frozen, do nothing to allow the existing timer to keep running
     }
 }
 
