@@ -496,7 +496,7 @@
 
     <!-- 2. PORTRAIT IMAGE — rotates through folder images, freezes on Shabbat -->
     <div class="portrait-col">
-      <img id="PORT_IMG" src="" alt="" style="transition: opacity 0.8s ease-in-out;">
+      <img id="PORT_IMG" src="" alt="" crossorigin="anonymous" style="transition: opacity 0.8s ease-in-out;">
     </div>
 
     <!-- 3. MIDDLE -->
@@ -963,13 +963,13 @@ function rotateP1() {
         const id = activeImageId || p1Images[0] || "";
         if (id) {
             img.style.opacity = 0;
-            setTimeout(() => { img.src = "https://drive.google.com/thumbnail?id=" + id + "&sz=w1200"; img.style.opacity = 1; }, 800);
+            setTimeout(() => { img.src = "https://lh3.googleusercontent.com/d/" + id + "=w1200"; img.style.opacity = 1; }, 800);
         }
         return;
     }
     img.style.opacity = 0;
     setTimeout(() => {
-        img.src = "https://drive.google.com/thumbnail?id=" + p1Images[p1Index] + "&sz=w1200";
+        img.src = "https://lh3.googleusercontent.com/d/" + p1Images[p1Index] + "=w1200";
         img.style.opacity = 1;
         p1Index = (p1Index + 1) % p1Images.length;
     }, 800);
@@ -989,7 +989,7 @@ function updateP1Image(isKodesh) {
         
         img.style.opacity = 0;
         setTimeout(() => {
-            img.src = shabbosPic ? "https://drive.google.com/thumbnail?id=" + shabbosPic + "&sz=w1200" : "";
+            img.src = shabbosPic ? "https://lh3.googleusercontent.com/d/" + shabbosPic + "=w1200" : "";
             img.style.opacity = 1;
         }, 800);
     } else {
