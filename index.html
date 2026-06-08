@@ -496,7 +496,7 @@
 
     <!-- 2. PORTRAIT IMAGE — rotates through folder images, freezes on Shabbat -->
     <div class="portrait-col">
-      <img id="PORT_IMG" src="" alt="" crossorigin="anonymous" style="transition: opacity 0.8s ease-in-out;">
+      <img id="PORT_IMG" src="" alt="" style="transition: opacity 0.8s ease-in-out;">
     </div>
 
     <!-- 3. MIDDLE -->
@@ -588,6 +588,7 @@ var currentlyHighlightedId = null;
 var lastRabbiText = null;
 var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
 var p1RotateTimer = null, isShabbosImageActive = false;
+var imageExpiryMap = {};
 
 const OMER_STRINGS = {
   1:"יום אחד", 2:"שני ימים", 3:"שלשה ימים", 4:"ארבעה ימים", 5:"חמשה ימים",
@@ -954,10 +955,29 @@ function updateClock() {
 
 // RULE 20: Weather Display - Open-Meteo API, refresh 15 min
 // ── IMAGE ROTATION (RULE 34) ───────────────────────────────────────────────
+function isImageExpired(fileId) {
+    if (!imageExpiryMap || !imageExpiryMap[fileId]) return false;
+    const expiry = new Date(String(imageExpiryMap[fileId]).replace(' ', 'T'));
+    return !isNaN(expiry.getTime()) && new Date() > expiry;
+}
+
+function getActiveImages() {
+    return p1Images.filter(id => !isImageExpired(id));
+}
+
 function rotateP1() {
     if (p1Images.length === 0 || isShabbosImageActive) return;
     const img = EL['PORT_IMG'];
     if (!img) return;
+    // Single image — no cycling needed
+    if (p1Images.length === 1) {
+        const id = activeImageId || p1Images[0] || "";
+        if (id) {
+            img.style.opacity = 0;
+            setTimeout(() => { img.src = "https://lh3.googleusercontent.com/d/" + id + "=w1200"; img.style.opacity = 1; }, 800);
+        }
+        return;
+    }
     // Rotation off — show active/first image only
     if (!p1Rotation) {
         const id = activeImageId || p1Images[0] || "";
@@ -966,6 +986,12 @@ function rotateP1() {
             setTimeout(() => { img.src = "https://lh3.googleusercontent.com/d/" + id + "=w1200"; img.style.opacity = 1; }, 800);
         }
         return;
+    }
+    // Rotate — advance index past expired images
+    let attempts = 0;
+    while (isImageExpired(p1Images[p1Index]) && attempts < p1Images.length) {
+        p1Index = (p1Index + 1) % p1Images.length;
+        attempts++;
     }
     img.style.opacity = 0;
     setTimeout(() => {
@@ -986,25 +1012,23 @@ function updateP1Image(isKodesh) {
             p1RotateTimer = null;
         }
         isShabbosImageActive = true;
-        
         img.style.opacity = 0;
         setTimeout(() => {
             img.src = shabbosPic ? "https://lh3.googleusercontent.com/d/" + shabbosPic + "=w1200" : "";
             img.style.opacity = 1;
         }, 800);
     } else {
-        // Only restart if it was previously frozen (isShabbosImageActive was true)
+        // Only restart if it was previously frozen
         if (isShabbosImageActive) {
             isShabbosImageActive = false;
-            // Re-initialize rotation logic
-            if (p1Rotation && p1Images.length > 0) {
-                rotateP1(); // Show first one immediately
+            const activeImgs = getActiveImages();
+            if (activeImgs.length > 1 && p1Rotation) {
+                rotateP1();
                 p1RotateTimer = setInterval(rotateP1, 15000);
             } else {
-                rotateP1(); // Just show one
+                rotateP1(); // single image or rotation off
             }
         }
-        // If it wasn't frozen, do nothing to allow the existing timer to keep running
     }
 }
 
@@ -1480,6 +1504,7 @@ function applyData(d) {
     activeImageId = d.activeImageId || "";
     shabbosPic    = d.shabbosPic   || "";
     p1Rotation    = d.p1Rotation !== false;
+    imageExpiryMap = d.imageExpiryMap || {};
 
     // Handle image expiry — if expired, override activeImageId with fallback
     const fallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
@@ -1500,7 +1525,7 @@ function applyData(d) {
 
     // Only touch the timer if not currently in Shabbos freeze
     if (!isShabbosImageActive) {
-        if (!p1Rotation) {
+        if (!p1Rotation || p1Images.length === 1) {
             if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
             rotateP1();
         } else if (p1Images.length > 0 && !p1RotateTimer) {
@@ -1580,72 +1605,5 @@ function updateFsBtn() {
   if (btn) btn.style.display = document.fullscreenElement ? 'none' : '';
 }
 </script>
-<!-- PASTE THE NEW SCRIPT BLOCK DIRECTLY HERE -->
-<!-- 1. Load the screenshot library safely -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-<!-- 2. The custom daily/weekly schedule script -->
-<script>
-const WEBHOOK_URL = "https://hook.us2.make.com/ijc6xvez7qvqex9v8gxir9bdutbxwlu8"; 
-
-let lastSentKey = "";
-
-function checkAndCapture(force = false) {
-    const now = new Date();
-    const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const todayStr = now.toDateString(); // Returns "Wed Jun 03 2026" today
-    
-    let currentKey = "";
-    let isTargetTime = false;
-
-    // 1. SUNDAY TO FRIDAY @ 6:00 AM
-    if (day >= 0 && day <= 5 && hour === 6) {
-        currentKey = `${todayStr}_6am`;
-        isTargetTime = true;
-    }
-    // 2. SATURDAY @ 9:30 AM
-    else if (day === 6 && hour === 9 && minute >= 30) {
-        currentKey = `${todayStr}_930am`;
-        isTargetTime = true;
-    }
-    // 3. ONE-TIME TRIGGER FOR LATER TODAY ONLY
-    // CHANGE THE HOUR (24-hour format) AND MINUTE BELOW:
-    else if (todayStr === "Wed Jun 03 2026" && hour === 16 && minute >= 45) { 
-        currentKey = `${todayStr}_onetime`;
-        isTargetTime = true;
-    }
-
-    if (force || (isTargetTime && lastSentKey !== currentKey)) {
-        if (!force) {
-            lastSentKey = currentKey; 
-        }
-        
-        html2canvas(document.body, { useCORS: true }).then(canvas => {
-            const base64Image = canvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
-
-            fetch(WEBHOOK_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    kioskName: "ChesedVemes",
-                    timestamp: now.toLocaleString(),
-                    image: base64Image
-                })
-            })
-            .then(res => console.log("Kiosk screenshot sent successfully!"))
-            .catch(err => console.error("Error sending kiosk screenshot:", err));
-        });
-    }
-}
-
-// Check the clock every 5 minutes
-setInterval(() => checkAndCapture(false), 300000);
-
-// FORCED TEST: Runs 10 seconds after any page load
-//setTimeout(() => checkAndCapture(true), 10000); 
-</script>
-
 </body>
 </html>
