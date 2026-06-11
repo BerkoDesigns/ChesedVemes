@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1280, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes">
 <title>קהל חסד ואמת – Master Board</title>
-<!-- Version 3.2 – May 2026 | Daf+Amud Yomi in Omer box + Image/Ann expiry -->
+<!-- Version 3.5 – June 2026 | Screenshot system (html2canvas → Make webhook) -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -969,21 +969,27 @@ function rotateP1() {
     if (p1Images.length === 0 || isShabbosImageActive) return;
     const img = EL['PORT_IMG'];
     if (!img) return;
-    // Single image — no cycling needed
+    // Single image — no cycling needed, only set src if not already showing it
     if (p1Images.length === 1) {
         const id = activeImageId || p1Images[0] || "";
         if (id) {
-            img.style.opacity = 0;
-            setTimeout(() => { img.src = "https://lh3.googleusercontent.com/d/" + id + "=w1200"; img.style.opacity = 1; }, 800);
+            const newSrc = "https://lh3.googleusercontent.com/d/" + id + "=w1200";
+            if (img.src !== newSrc) {
+                img.style.opacity = 0;
+                setTimeout(() => { img.src = newSrc; img.style.opacity = 1; }, 800);
+            }
         }
         return;
     }
-    // Rotation off — show active/first image only
+    // Rotation off — show active/first image only, skip fade if already showing it
     if (!p1Rotation) {
         const id = activeImageId || p1Images[0] || "";
         if (id) {
-            img.style.opacity = 0;
-            setTimeout(() => { img.src = "https://lh3.googleusercontent.com/d/" + id + "=w1200"; img.style.opacity = 1; }, 800);
+            const newSrc = "https://lh3.googleusercontent.com/d/" + id + "=w1200";
+            if (img.src !== newSrc) {
+                img.style.opacity = 0;
+                setTimeout(() => { img.src = newSrc; img.style.opacity = 1; }, 800);
+            }
         }
         return;
     }
@@ -1012,11 +1018,12 @@ function updateP1Image(isKodesh) {
             p1RotateTimer = null;
         }
         isShabbosImageActive = true;
-        img.style.opacity = 0;
-        setTimeout(() => {
-            img.src = shabbosPic ? "https://lh3.googleusercontent.com/d/" + shabbosPic + "=w1200" : "";
-            img.style.opacity = 1;
-        }, 800);
+        // Only set src if not already showing the Shabbos image
+        const shabbosSrc = shabbosPic ? "https://lh3.googleusercontent.com/d/" + shabbosPic + "=w1200" : "";
+        if (img.src !== shabbosSrc) {
+            img.style.opacity = 0;
+            setTimeout(() => { img.src = shabbosSrc; img.style.opacity = 1; }, 800);
+        }
     } else {
         // Only restart if it was previously frozen
         if (isShabbosImageActive) {
@@ -1647,8 +1654,8 @@ function checkAndCapture(force = false) {
 }
 
 setInterval(() => checkAndCapture(false), 300000);
-// TEST — remove after confirming it works:
-//setTimeout(() => checkAndCapture(true), 5000);
+// Remove the line below after confirming screenshot delivery works:
+// setTimeout(() => checkAndCapture(true), 5000);
 </script>
 </body>
 </html>
