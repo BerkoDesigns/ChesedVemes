@@ -1452,7 +1452,7 @@ function loadData() {
     .then(d => {
         clearTimeout(timeoutId);
         if (d && d.schedule) {
-            try { localStorage.setItem('chesed_cache', JSON.stringify(d)); } catch(e) {}
+            try { localStorage.setItem('chesed_cache', JSON.stringify({ data: d, savedAt: Date.now() })); } catch(e) {}
             applyData(d);
         }
     })
@@ -1586,10 +1586,23 @@ function cancelDelete() {
 }
 
 initEls();
-try { 
-    let c = localStorage.getItem('chesed_cache'); 
-    if (c) applyData(JSON.parse(c)); 
-} catch(e) {}
+try {
+    const raw = localStorage.getItem('chesed_cache');
+    if (raw) {
+        const cached = JSON.parse(raw);
+        // Support both old format (raw data) and new format ({ data, savedAt })
+        const cacheData = cached.savedAt ? cached.data : cached;
+        const cacheAge  = cached.savedAt ? (Date.now() - cached.savedAt) : Infinity;
+        const ONE_HOUR  = 3600000;
+        if (cacheAge < ONE_HOUR && cacheData && cacheData.schedule) {
+            applyData(cacheData);
+        } else {
+            // Cache too old or bad format — clear it
+            localStorage.removeItem('chesed_cache');
+            console.log('Cache expired or invalid — waiting for live fetch');
+        }
+    }
+} catch(e) { localStorage.removeItem('chesed_cache'); }
 setInterval(updateClock, 1000); updateClock();
 loadWeather(); setInterval(loadWeather, 900000);
 loadData();    setInterval(loadData, 30000);
