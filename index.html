@@ -818,7 +818,7 @@ function fitInBox(el, container, vhStart) {
     }
 }
 
-// fitExpand: grow text UP to fill available space in container
+// fitExpand: grow text UP to fill available space, also shrink below vhStart if needed
 function fitExpand(el, vhStart, vhMax) {
     if (!el) return;
     let container = el.parentElement;
@@ -832,8 +832,8 @@ function fitExpand(el, vhStart, vhMax) {
         el.style.fontSize = vh + "vh";
     }
     
-    // Shrink back slightly if overflowed
-    while (el.scrollHeight > container.clientHeight && vh > vhStart) {
+    // Shrink down until text fits — can go below vhStart if needed, min 1.0vh
+    while (el.scrollHeight > container.clientHeight && vh > 1.0) {
         vh -= 0.15;
         el.style.fontSize = vh + "vh";
     }
@@ -1235,7 +1235,7 @@ function updateUI() {
     } else if (isMoledDisplay) {
         EL['O2'].innerHTML = '';
         EL['O2'].innerText = moledText;
-        fitExpand(EL['O2'], 4.2, 8.0);
+        fitExpand(EL['O2'], 2.8, 5.0);
         if (dafPillEl)  dafPillEl.style.display  = '';
         if (amudPillEl) amudPillEl.style.display  = 'none';
     } else if (omerKey) {
