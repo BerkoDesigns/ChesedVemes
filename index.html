@@ -1390,11 +1390,19 @@ function updateUI() {
             head = hText || "יום טוב"; sub = tR; cls = "teal-box";
         }
     } else {
-        // RULE 14 — Rosh Chodesh stops 25 min before RT on last day
+        // RULE 14 — Rosh Chodesh: starts RT-25min the evening before, ends RT-25min on last day
         let rochCutoff = rtSecs - 1500; // 25 min before RT
         let todayIsRC  = hText.includes("ראש חודש");
 
-        if (todayIsRC && cSec < rochCutoff) {
+        // Check if tomorrow is Rosh Chodesh (handles erev RC and 2-day RC)
+        let dTomorrow    = schedule[getIso(new Date(now.getTime() + 86400000))];
+        let tomorrowIsRC = dTomorrow && (dTomorrow.holidayText || "").includes("ראש חודש");
+        let isErevRC     = tomorrowIsRC && cSec >= rochCutoff && !todayIsRC;
+
+        if (isErevRC) {
+            // Evening before RC — show from RT-25min onward
+            head = dTomorrow.holidayText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
+        } else if (todayIsRC && cSec < rochCutoff) {
             // Day of Rosh Chodesh — show until 25 min before RT
             head = hText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
         } else if (hText !== "" && !isPastRT && !todayIsRC) {
