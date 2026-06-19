@@ -1435,7 +1435,9 @@ function updateUI() {
     }
 
     // RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
-    let showKL = getKiddushLevana(now, dDate.heb || "", isShab, hText, dayW);
+    // Custom timer: Drops the Shabbat blocker 25 minutes (1500 seconds) before RT
+    let isShabForKL = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < (rtSecs - 1500));
+    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW);
     let klLine = showKL ? `<span id="status-kl"><span id="status-kl-text">קידוש לבנה</span></span>` : "";
     let hasExtra = sub || showKL;
     let headSize = hasExtra ? 6.2 : 8.5;
