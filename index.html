@@ -593,6 +593,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr9nQSnr4zjazj8uT1J
 
 var defaultSummerMsg = "", shabbosPic = "", tefilaOverride = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
+var pdfZmanimList = [];
 var currentlyHighlightedId = null;
 var lastRabbiText = null;
 var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
@@ -950,6 +951,17 @@ function isNineDays(hebDate) {
     return false;
 }
 
+// ── PDF ZMANIM OVERRIDE ───────────────────────────────────────────
+// Finds the PDFZmanim week (if any) covering the given ISO date.
+// Returns null if no matching week — callers must fall back to the
+// existing formula-based values in that case.
+function findPdfZmanimOverride(iso) {
+    for (let w of pdfZmanimList) {
+        if (w.weekStart && w.weekEnd && iso >= w.weekStart && iso <= w.weekEnd) return w;
+    }
+    return null;
+}
+
 // ── FALLBACK IMAGE ────────────────────────────────────────────────
 // Default portrait image shown when current image expires or is empty
 // Update this ID if the default logo image ever changes in Google Drive
@@ -1104,6 +1116,12 @@ function updateUI() {
     }
     let dDate = schedule[dIso] || dToday;
 
+    // PDF ZMANIM OVERRIDE — looked up once per cycle using dIso (the
+    // same date the zmanim list itself is built from). null if no
+    // PDFZmanim week covers this date; all override blocks below check
+    // this before falling back to existing formula behavior.
+    let pdfOverride = findPdfZmanimOverride(dIso);
+
     let rtSecs = getSec(dToday.z[10], true);
     // RULE 7: Omer Box Flip - RT - 25 min
     let oIso   = (cSec >= rtSecs - 1500) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
@@ -1155,44 +1173,65 @@ function updateUI() {
     ];
 
     // Candle lighting — Friday/Yom Tov only
+    // PDF override: display only — candleTime/candleSecs (Shabbos boundary
+    // logic used elsewhere) stay on the formula value, untouched.
     if (candleTime !== "" && h !== 0) {
-        zRows.push({ id:'row_special', label:'הדלקת נרות', timeStr: candleTime,
-            secVal: getCandleSec(candleTime) });
+        let displayCandle = (pdfOverride && pdfOverride.candleLighting) ? pdfOverride.candleLighting : candleTime;
+        zRows.push({ id:'row_special', label:'הדלקת נרות', timeStr: displayCandle,
+            secVal: getCandleSec(displayCandle) });
     }
 
     // שקיעה
     zRows.push({ id:'r10', label:'שקיעת החמה', timeStr: dDate.z[9], secVal: getSec(dDate.z[9], true) });
 
     // Friday: מנחה וקבלת שבת + זרע שמשון — skip on Erev Shabbat Yom Tov
+    // PDF override: fridayMincha replaces the hardcoded 7:00 PM when present;
+    // זרע שמשון stays derived as 20 min before Mincha either way.
     if (isFriday && isMinchaFriSeason && !isYomTov) {
-        zRows.push({ id:'r_fri_mincha', label:'מנחה וקבלת שבת', timeStr:'7:00:00',
-            secVal: 19*3600 });
-        zRows.push({ id:'r_zera', label:'זרע שמשון', timeStr:'6:40:00',
-            secVal: 18*3600 + 40*60 });
+        let friMinchaTime = (pdfOverride && pdfOverride.fridayMincha) ? pdfOverride.fridayMincha : '7:00:00';
+        let friMinchaSec  = getSec(friMinchaTime, true);
+        let zeraTime      = shiftTime(friMinchaTime, -20);
+        zRows.push({ id:'r_fri_mincha', label:'מנחה וקבלת שבת', timeStr: friMinchaTime,
+            secVal: friMinchaSec });
+        zRows.push({ id:'r_zera', label:'זרע שמשון', timeStr: zeraTime,
+            secVal: friMinchaSec - 20*60 });
     }
 
-    // Saturday: מנחה, שיעור מן הרב, פרקי אבות — skip on Shabbat Yom Tov
+    // Saturday: שחרית, מנחה, שיעור מן הרב, פרקי אבות — skip on Shabbat Yom Tov
+    // PDF override: each of these 4 uses the PDF value directly when present;
+    // שחרית has no formula fallback (new row, PDF-only — only shown when override exists).
     if (isSaturday && !isYomTov) {
-        let shabMinchaTime = shiftTime(dDate.z[9], -28);
-        let shiurTime      = shiftTime(dDate.z[9], -88);
-        zRows.push({ id:'r_shab_mincha', label:'מנחה',           timeStr: shabMinchaTime, secVal: getSec(dDate.z[9], true) - 28*60 });
-        zRows.push({ id:'r_shiur',       label:'שיעור מן הרב',   timeStr: shiurTime,      secVal: getSec(dDate.z[9], true) - 88*60 });
+        if (pdfOverride && pdfOverride.shacharis) {
+            zRows.push({ id:'r_shacharis', label:'שחרית', timeStr: pdfOverride.shacharis,
+                secVal: getSec(pdfOverride.shacharis, false) });
+        }
+
+        let shabMinchaTime = (pdfOverride && pdfOverride.mincha) ? pdfOverride.mincha : shiftTime(dDate.z[9], -28);
+        let shiurTime      = (pdfOverride && pdfOverride.shiurMinRav) ? pdfOverride.shiurMinRav : shiftTime(dDate.z[9], -88);
+        let shabMinchaSec  = (pdfOverride && pdfOverride.mincha) ? getSec(shabMinchaTime, true) : (getSec(dDate.z[9], true) - 28*60);
+        let shiurSec       = (pdfOverride && pdfOverride.shiurMinRav) ? getSec(shiurTime, true) : (getSec(dDate.z[9], true) - 88*60);
+        zRows.push({ id:'r_shab_mincha', label:'מנחה',           timeStr: shabMinchaTime, secVal: shabMinchaSec });
+        zRows.push({ id:'r_shiur',       label:'שיעור מן הרב',   timeStr: shiurTime,      secVal: shiurSec });
         if (isPirkeySeason) {
-            zRows.push({ id:'r_avos', label:'פרקי אבות', timeStr:'7:00:00', secVal: 19*3600 });
+            let pirkeiTime = (pdfOverride && pdfOverride.pirkeiAvos) ? pdfOverride.pirkeiAvos : '7:00:00';
+            zRows.push({ id:'r_avos', label:'פרקי אבות', timeStr: pirkeiTime, secVal: getSec(pirkeiTime, true) });
         }
     }
 
     // מעריב — show all of Shabbos day (from Alos Sat through 1AM Sun)
+    // PDF override: display only, uses formula derivation when no override exists.
     let alosToday  = getSec(dToday.z[0], false);
     let showMaariv = (dayW === 6) || (dayW === 0 && cSec < 3600);
     if (showMaariv) {
-        let maarTime = shiftTime(dDate.z[9], 51);
-        zRows.push({ id:'r11', label:'מעריב', timeStr: maarTime, secVal: getSec(dDate.z[9], true) + 51*60 });
+        let maarTime = (pdfOverride && pdfOverride.maariv) ? pdfOverride.maariv : shiftTime(dDate.z[9], 51);
+        let maarSec  = (pdfOverride && pdfOverride.maariv) ? getSec(maarTime, true) : (getSec(dDate.z[9], true) + 51*60);
+        zRows.push({ id:'r11', label:'מעריב', timeStr: maarTime, secVal: maarSec });
     }
 
-    // רבינו תם — no special styling, sorts naturally
-    let rtTime = dDate.z[10];
-    zRows.push({ id:'r12', label:'רבינו תם', timeStr: rtTime, secVal: getSec(dDate.z[10], true) });
+    // רבינו תם — display only override; rtSecs (Shabbos boundary/flip logic
+    // used throughout updateUI) intentionally stays on the formula value.
+    let rtTime = (pdfOverride && pdfOverride.rabbeinuTam) ? pdfOverride.rabbeinuTam : dDate.z[10];
+    zRows.push({ id:'r12', label:'רבינו תם', timeStr: rtTime, secVal: getSec(rtTime, true) });
 
     // Sort all by time
     zRows.sort((a, b) => a.secVal - b.secVal);
@@ -1484,6 +1523,7 @@ function applyData(d) {
     schedule         = d.schedule;
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
+    pdfZmanimList    = d.pdfZmanimList || [];
 
     // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
