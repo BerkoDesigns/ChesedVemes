@@ -1413,7 +1413,9 @@ function updateUI() {
         }
     } else if (isMotz) {
         // RULE 22: "ותודיענו" - Only when Motzei Shabbat + Yom Tov tomorrow
-        let dNextDay = schedule[getIso(new Date(now.getTime() + 86400000))];
+        // Use dIso as base (not raw now) so "tomorrow" is consistent with
+        // what the board considers today — fixes midnight-to-3AM window.
+        let dNextDay = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (nextDayIsYomTov && hText) {
@@ -1429,7 +1431,7 @@ function updateUI() {
             head = "מוצאי שבת"; sub = "אתה חוננתנו";
         }
     } else if (isYomTovStatus) {
-        let dNextDay = schedule[getIso(new Date(now.getTime() + 86400000))];
+        let dNextDay = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (!nextDayIsYomTov && isPastRT) {
@@ -1440,20 +1442,30 @@ function updateUI() {
     } else {
         // RULE 14 — Rosh Chodesh: starts RT-25min the evening before, ends RT-25min on last day
         let rochCutoff = rtSecs - 1500; // 25 min before RT
+        // hText-based check (covers normal daytime + after 3AM)
         let todayIsRC  = hText.includes("ראש חודש");
+        // dToday-based check (covers midnight-to-3AM when dIso still points to yesterday
+        // but the civil date has already flipped to RC day)
+        let civilTodayIsRC = (dToday.holidayText || "").includes("ראש חודש");
+        // Either check firing means we're on RC day
+        let onRCDay = todayIsRC || civilTodayIsRC;
+        // Use the right text source for head display
+        let rcHeadText = todayIsRC ? hText : (dToday.holidayText || "ראש חודש");
 
         // Check if tomorrow is Rosh Chodesh (handles erev RC and 2-day RC)
-        let dTomorrow    = schedule[getIso(new Date(now.getTime() + 86400000))];
+        // Use dIso as base (not raw now) so midnight-to-3AM window correctly
+        // sees the next calendar day as "tomorrow" rather than skipping a day.
+        let dTomorrow    = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
         let tomorrowIsRC = dTomorrow && (dTomorrow.holidayText || "").includes("ראש חודש");
-        let isErevRC     = tomorrowIsRC && cSec >= rochCutoff && !todayIsRC;
+        let isErevRC     = tomorrowIsRC && cSec >= rochCutoff && !onRCDay;
 
         if (isErevRC) {
             // Evening before RC — show from RT-25min onward
             head = dTomorrow.holidayText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
-        } else if (todayIsRC && cSec < rochCutoff) {
+        } else if (onRCDay && cSec < rochCutoff) {
             // Day of Rosh Chodesh — show until 25 min before RT
-            head = hText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
-        } else if (hText !== "" && !isPastRT && !todayIsRC) {
+            head = rcHeadText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
+        } else if (hText !== "" && !isPastRT && !onRCDay) {
             // Other holiday text before RT
             head = hText; sub = tR; cls = "teal-box";
         } else if (tR !== "" && !isPastRT) {
@@ -1731,3 +1743,4 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
+
