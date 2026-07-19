@@ -945,7 +945,9 @@ function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek) {
 }
 function isNineDays(hebDate) {
     if (!hebDate || !hebDate.includes("אב")) return false;
-    for (let d of ["א'","ב'","ג'","ד'","ה'","ו'","ז'","ח'","ט'"]) {
+    // Use Hebrew geresh ׳ (U+05F3) — matches actual sheet format e.g. "ה׳ אב תשפ״ו"
+    // Suppress 1-8 Av; Tisha B'Av (9 Av) shows KL so people know to do it that night
+    for (let d of ["א׳","ב׳","ג׳","ד׳","ה׳","ו׳","ז׳","ח׳"]) {
         if (hebDate.startsWith(d)) return true;
     }
     return false;
@@ -1743,4 +1745,5 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
+
 
