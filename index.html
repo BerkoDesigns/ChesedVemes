@@ -1562,7 +1562,7 @@ function applyData(d) {
                     rabbiEl.innerText  = bodyText;
                     headerEl.innerText = "דבר תורה · " + parshaName;
                     rabbiEl.style.fontSize = "";  // clear any previous size
-                    setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 200);
+                    setTimeout(() => fitExpand(rabbiEl, 3.5, 5.5), 200);
                 }
             } else {
                 rabbiBody.classList.remove("dvar-torah");
@@ -1571,7 +1571,7 @@ function applyData(d) {
                     rabbiEl.innerText  = tefilaOverride.trim();
                     headerEl.innerText = "הלכה יומית";
                     rabbiEl.style.fontSize = "";
-                    setTimeout(() => fitInBox(rabbiEl, rabbiBody, 5.5), 200);
+                    setTimeout(() => fitExpand(rabbiEl, 3.5, 5.5), 200);
                 }
             }
         } else {
@@ -1750,3 +1750,4 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
+
