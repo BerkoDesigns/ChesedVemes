@@ -929,11 +929,16 @@ function parseMoladEntry(str) {
 }
 
 // ── KIDDUSH LEVANA ────────────────────────────────────────────────
-function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek) {
+function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek, cSec, alosSec) {
     if (isShab) return false;
     if (holidayText && holidayText.trim() !== "") return false;
     if (dayOfWeek === 5) return false;
     if (isNineDays(hebDate)) return false;
+    // On Tisha B'Av (9 Av), only show KL from Alos onwards —
+    // not from RT the night before when the Hebrew date first flips to 9 Av
+    if (hebDate.startsWith("ט׳") && hebDate.includes("אב")) {
+        if (cSec < alosSec) return false;
+    }
     let nowMs = now.getTime(), bestMolad = null;
     for (let mol of moladList) {
         if (mol && mol.getTime() <= nowMs && (!bestMolad || mol.getTime() > bestMolad.getTime()))
@@ -1490,7 +1495,7 @@ function updateUI() {
     // RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
     // Custom timer: Drops the Shabbat blocker 25 minutes (1500 seconds) before RT
     let isShabForKL = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < (rtSecs - 1500));
-    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW);
+    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false));
     let klLine = showKL ? `<span id="status-kl"><span id="status-kl-text">קידוש לבנה</span></span>` : "";
     let hasExtra = sub || showKL;
     let headSize = hasExtra ? 6.2 : 8.5;
