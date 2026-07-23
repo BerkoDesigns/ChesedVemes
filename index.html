@@ -931,7 +931,7 @@ function parseMoladEntry(str) {
 // ── KIDDUSH LEVANA ────────────────────────────────────────────────
 function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek, cSec, alosSec) {
     if (isShab) return false;
-    if (holidayText && holidayText.trim() !== "") return false;
+    if (holidayText && holidayText.trim() !== "" && !holidayText.includes("תשעה באב")) return false;
     if (dayOfWeek === 5) return false;
     if (isNineDays(hebDate)) return false;
     // On Tisha B'Av (9 Av), only show KL from Alos onwards —
