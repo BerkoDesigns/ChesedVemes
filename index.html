@@ -1187,7 +1187,10 @@ function renderTefilaBox(now, dayW, holidayText) {
         if (count > 0) {
             let avgSec    = Math.round(total / count);
             let offsetSec = (Number(minchaOffsetMinutes) || 10) * 60;
-            minchaMaarivSec = avgSec - offsetSec;
+            let rawSec    = avgSec - offsetSec;
+            // Round UP to the nearest whole minute — matches how this is done
+            // by hand (e.g. an exact 8:04:09 becomes 8:05, not a truncated 8:04).
+            minchaMaarivSec = Math.ceil(rawSec / 60) * 60;
         }
     }
 
