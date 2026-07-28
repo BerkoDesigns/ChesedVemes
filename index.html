@@ -49,7 +49,6 @@
   }
   #DAF_YOMI {
     font-size: 2.2vh; color: #1a3a32;
-    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
     font-weight: 700; white-space: nowrap; direction: rtl;
     background: #A8D5CC;
     padding: 2px 10px;
@@ -63,7 +62,6 @@
   /* ── AMUD YOMI PILL (branding bar, next to Daf) ─────────────── */
   #AMUD_YOMI {
     font-size: 2.2vh; color: #1a3a32;
-    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
     font-weight: 700; white-space: nowrap; direction: rtl;
     background: #A8D5CC;
     padding: 2px 10px;
@@ -152,15 +150,19 @@
 
   .zemanim-header {
     background: var(--gold); color: #000;
-    font-size: 2.4vh; font-weight: 700;
-    text-align: center; padding: 2px 8px;
+    font-size: 3.0vh; line-height: 1; font-weight: 800;
+    text-align: center; display: flex; align-items: center; justify-content: center;
+    padding: 1px 8px;
     border-radius: 8px 8px 0 0; flex-shrink: 0;
     letter-spacing: 0.03em;
-    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
   }
   /* ── ZEMANIM ─────────────────────────────────────────────────── */
+  .zemanim-col-wrap {
+    width: 23vw; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
   .zemanim-col {
-    width: 23vw; border: 2px solid var(--gold); border-radius: 10px;
+    width: 100%; border: 2px solid var(--gold); border-radius: 10px;
     display: flex; flex-direction: column; padding: 2px;
     background: var(--box); overflow: hidden; flex-shrink: 0;
   }
@@ -169,6 +171,7 @@
     padding: 0px 8px; border-bottom: 1px solid #d4cec6;
     align-items: center; flex: 1; overflow: hidden;
   }
+  .z-row:last-child { border-bottom: none; }
   .z-label { color: #1f3d35; font-size: 3.6vh; }
   .z-time  { color: #1a2e28; font-size: 3.2vh; font-family: 'Assistant', sans-serif; font-weight: 700; direction: ltr; }
   .active-zman { background: #A8D5CC !important; }
@@ -211,10 +214,11 @@
   }
   .rabbi-header {
     background: var(--gold); color: #000;
-    font-size: 2.0vh; font-weight: 800;
-    text-align: center; padding: 3px 8px;
+    font-size: 3.0vh; line-height: 1; font-weight: 800;
+    text-align: center; display: flex; align-items: center; justify-content: center;
+    padding: 1px 8px;
     border-radius: 8px 8px 0 0; flex-shrink: 0;
-    letter-spacing: 0.06em; text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
   .rabbi-body {
     flex: 1; display: flex; align-items: center;
@@ -282,13 +286,11 @@
   }
   .omer-daf-amud .da-label {
     font-size: 2.4vh; font-weight: 700; color: #1a1a1a;
-    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
     text-align: center; direction: rtl; line-height: 1.1;
     flex-shrink: 0;
   }
   .omer-daf-amud .da-text {
     font-size: 3.4vh; font-weight: 900; color: #1a1a1a;
-    font-family: 'Frank Ruhl Libre', 'Arial Hebrew', serif;
     text-align: center; direction: rtl; line-height: 1.1;
     flex-shrink: 0;
   }
@@ -498,9 +500,16 @@
 
   <div class="main-body">
 
-    <!-- 1. ZEMANIM — rebuilt dynamically and sorted by time -->
-    <div class="zemanim-col" id="ZMANIM_LIST">
-      <div class="zemanim-header">זמני היום</div>
+    <!-- 1. ZEMANIM — the live, sorted, time-highlighted list — and, stacked
+         below it as a genuinely separate box, the always-visible davening
+         times box (never day-gated, never mixed into the live list) -->
+    <div class="zemanim-col-wrap">
+      <div class="zemanim-col" id="ZMANIM_LIST" style="flex: 2.1;">
+        <div class="zemanim-header">זמני היום</div>
+      </div>
+      <div class="zemanim-col" id="ZMANIM_TEFILA" style="flex: 1;">
+        <div class="zemanim-header">זמנים התפילה בימי חול</div>
+      </div>
     </div>
 
     <!-- 2. PORTRAIT IMAGE — rotates through folder images, freezes on Shabbat -->
@@ -585,7 +594,7 @@ function initEls() {
      'ANN','O2','SLEEP_OVERLAY','SLEEP_CLOCK',
      'ENG_DATE','WEATHER','ZMANIM_LIST',
      'NER_BODY','COFFEE_BODY','NER_TITLE','COFFEE_TITLE',
-     'PORT_IMG','OMER','RABBI'
+     'PORT_IMG','OMER','RABBI','ZMANIM_TEFILA'
     ].forEach(id => { EL[id] = document.getElementById(id); });
 }
 
@@ -599,6 +608,11 @@ var lastRabbiText = null;
 var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
 var p1RotateTimer = null, isShabbosImageActive = false;
 var imageExpiryMap = {};
+var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "";
+var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
+var shacharisOverride = "", minchaMaarivOverride = "";
+var lastTefilaHTML = "";
+const EARLY_MINCHA_TIME = "14:15"; // fixed 2:15 PM — not editable, only on/off
 
 const OMER_STRINGS = {
   1:"יום אחד", 2:"שני ימים", 3:"שלשה ימים", 4:"ארבעה ימים", 5:"חמשה ימים",
@@ -769,6 +783,14 @@ function fmtZman(t) {
     let c = t.replace(/(AM|PM|am|pm)/g,"").trim(), p = c.split(':');
     return `${p[0]}:${p[1]}<span class="secs">:${p[2]||"00"}</span>`;
 }
+// Same as fmtZman but without the seconds span — used in the always-on
+// זמנים התפילה בימי חול box, where these are round-minute times set by
+// the admin (or a weekly-average formula), so seconds are meaningless.
+function fmtZmanNoSec(t) {
+    if (!t || t.includes("--")) return "--:--";
+    let c = t.replace(/(AM|PM|am|pm)/g,"").trim(), p = c.split(':');
+    return `${p[0]}:${p[1]}`;
+}
 function getSec(t, pm) {
     if (!t || t.toString().includes("--")) return 0;
     let clean = t.toString().replace(/(AM|PM|am|pm)/g,"").trim();
@@ -790,6 +812,30 @@ function getCandleSec(t) {
 }
 function getIso(d) {
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,'0') + "-" + String(d.getDate()).padStart(2,'0');
+}
+
+// ── 24-HOUR TIME HELPERS (Manager-app editable daily zmanim) ──────
+// These fields (Shacharis tiers, Maariv) are entered via <input type="time">
+// in the Manager app, which yields unambiguous 24-hour "HH:MM" strings —
+// no AM/PM guessing needed, unlike the legacy getSec()/shiftTime() helpers
+// above which assume 12-hour input with an explicit pm flag.
+function parse24ToSec(t) {
+    if (!t) return null;
+    let p = t.toString().trim().split(':');
+    let h = parseInt(p[0]), m = parseInt(p[1]||0), s = parseInt(p[2]||0);
+    if (isNaN(h) || isNaN(m)) return null;
+    return (h*3600) + (m*60) + (isNaN(s) ? 0 : s);
+}
+// Converts a seconds-since-midnight value into the "h:m:s" 12-hour display
+// string the rest of the board's zmanim rows use (no AM/PM suffix — the
+// zmanim column is always PM by convention for anything after Chatzos,
+// and these three rows are always displayed as such).
+function secToTimeStr(totalSec) {
+    if (totalSec == null) return "--:--:--";
+    let sec = ((totalSec % 86400) + 86400) % 86400;
+    let h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    if (h > 12) h -= 12; if (h === 0) h = 12;
+    return h + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
 }
 
 /**
@@ -1079,6 +1125,91 @@ function loadWeather() {
     .catch(err => console.log("Weather error:", err));
 }
 
+// ── זמנים התפילה בימי חול — always-visible davening box ─────────────
+// Genuinely separate from the live זמני היום list: every line shows every
+// day (no day-of-week hiding), only the שחרית line's label/time swaps
+// based on Rosh Chodesh/Chol HaMoed proximity, and the early Mincha line
+// disappears entirely when its toggle is off. Manual overrides (set via
+// the Manager app) replace the computed value for שחרית or מנחה-מעריב
+// when today falls inside an override's date range.
+function renderTefilaBox(now, dayW, holidayText) {
+    if (!EL['ZMANIM_TEFILA']) return;
+
+    // שחרית (יום א') — always its own fixed time, untouched by the
+    // RC/Chol HaMoed swap or by overrides (those only affect the main line).
+    let shSunSec = parse24ToSec(shacharisSunday);
+
+    // Regular שחרית line — swaps label+time to Rosh Chodesh/Chol HaMoed from
+    // erev (tomorrow is RC/CHM) through midday of the day itself (today is
+    // RC/CHM and before noon). "Tomorrow is still special" keeps the window
+    // open on its own through multi-day Chol HaMoed / 2-day Rosh Chodesh.
+    let tomorrow     = new Date(now.getTime() + 86400000);
+    let tomorrowText = (schedule[getIso(tomorrow)] || {}).holidayText || "";
+    let cSecNow  = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+    let isBeforeMidday = cSecNow < 43200;
+
+    let tomorrowIsRC  = tomorrowText.includes("ראש חודש");
+    let tomorrowIsCHM = tomorrowText.includes("חול המועד");
+    let todayIsRC     = holidayText.includes("ראש חודש");
+    let todayIsCHM    = holidayText.includes("חול המועד");
+
+    let shLabel = 'שחרית', shSec = parse24ToSec(shacharisWeekday);
+    if (tomorrowIsRC || (todayIsRC && isBeforeMidday)) {
+        shLabel = 'שחרית ראש חודש'; shSec = parse24ToSec(shacharisRoshChodesh);
+    } else if (tomorrowIsCHM || (todayIsCHM && isBeforeMidday)) {
+        shLabel = 'שחרית חול המועד'; shSec = parse24ToSec(shacharisCholHamoed);
+    }
+    // Manual override replaces just the time — the label above still stands.
+    if (shacharisOverride) {
+        let ovrSec = parse24ToSec(shacharisOverride);
+        if (ovrSec != null) shSec = ovrSec;
+    }
+
+    // מנחה — early minyan, fixed 2:15 PM, shown only when the toggle is on.
+    let earlyMinchaSec = minchaEarlyEnabled ? parse24ToSec(EARLY_MINCHA_TIME) : null;
+
+    // מנחה-מעריב — live weekly average (this week's Sun–Thu שקיעה minus the
+    // editable offset), or the manual override if one is active today.
+    let minchaMaarivSec = null;
+    if (minchaMaarivOverride) {
+        minchaMaarivSec = parse24ToSec(minchaMaarivOverride);
+    } else {
+        let weekSunday = new Date(now.getTime() - dayW*86400000);
+        let total = 0, count = 0;
+        for (let i = 0; i <= 4; i++) {
+            let di = new Date(weekSunday.getTime() + i*86400000);
+            let dS = schedule[getIso(di)];
+            if (dS && dS.z && dS.z[9]) {
+                let sec = getSec(dS.z[9], true);
+                if (sec > 0) { total += sec; count++; }
+            }
+        }
+        if (count > 0) {
+            let avgSec    = Math.round(total / count);
+            let offsetSec = (Number(minchaOffsetMinutes) || 10) * 60;
+            minchaMaarivSec = avgSec - offsetSec;
+        }
+    }
+
+    // מעריב — fixed nightly time.
+    let maarivSec = parse24ToSec(maarivWeekday);
+
+    let rows = [];
+    rows.push(`<div class="z-row"><span class="z-label">שחרית (יום א')</span><span class="z-time">${shSunSec!=null ? fmtZmanNoSec(secToTimeStr(shSunSec)) : '--:--'}</span></div>`);
+    rows.push(`<div class="z-row"><span class="z-label">${shLabel}</span><span class="z-time">${shSec!=null ? fmtZmanNoSec(secToTimeStr(shSec)) : '--:--'}</span></div>`);
+    if (earlyMinchaSec != null) {
+        rows.push(`<div class="z-row"><span class="z-label">מנחה</span><span class="z-time">${fmtZmanNoSec(secToTimeStr(earlyMinchaSec))}</span></div>`);
+    }
+    rows.push(`<div class="z-row"><span class="z-label">מנחה-מעריב</span><span class="z-time">${minchaMaarivSec!=null ? fmtZmanNoSec(secToTimeStr(minchaMaarivSec)) : '--:--'}</span></div>`);
+    rows.push(`<div class="z-row"><span class="z-label">מעריב</span><span class="z-time">${maarivSec!=null ? fmtZmanNoSec(secToTimeStr(maarivSec)) : '--:--'}</span></div>`);
+
+    let html = '<div class="zemanim-header">זמנים התפילה בימי חול</div>' + rows.join('');
+    if (html !== lastTefilaHTML) {
+        lastTefilaHTML = html;
+        EL['ZMANIM_TEFILA'].innerHTML = html;
+    }
+}
+
 // ── MAIN UI UPDATE ────────────────────────────────────────────────
 function updateUI() {
     let now = new Date();
@@ -1234,6 +1365,11 @@ function updateUI() {
         let maarSec  = (pdfOverride && pdfOverride.maariv) ? getSec(maarTime, true) : (getSec(dDate.z[9], true) + 51*60);
         zRows.push({ id:'r11', label:'מעריב', timeStr: maarTime, secVal: maarSec });
     }
+
+    // זמנים התפילה בימי חול — the always-visible davening box, entirely
+    // separate from this sorted list (see renderTefilaBox below). Not
+    // day-gated, no live highlighting, rendered independently.
+    renderTefilaBox(now, dayW, holidayText);
 
     // רבינו תם — display only override; rtSecs (Shabbos boundary/flip logic
     // used throughout updateUI) intentionally stays on the formula value.
@@ -1543,6 +1679,15 @@ function applyData(d) {
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
     pdfZmanimList    = d.pdfZmanimList || [];
+    shacharisSunday      = d.shacharisSunday      || "07:30";
+    shacharisWeekday     = d.shacharisWeekday     || "06:30";
+    shacharisRoshChodesh = d.shacharisRoshChodesh || "06:20";
+    shacharisCholHamoed  = d.shacharisCholHamoed  || "06:20";
+    minchaEarlyEnabled   = d.minchaEarlyEnabled !== false;
+    minchaOffsetMinutes  = (d.minchaOffsetMinutes !== undefined && d.minchaOffsetMinutes !== "") ? d.minchaOffsetMinutes : 9;
+    maarivWeekday        = d.maarivWeekday        || "21:45";
+    shacharisOverride    = d.shacharisOverride    || "";
+    minchaMaarivOverride = d.minchaMaarivOverride || "";
 
     // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
@@ -1750,4 +1895,3 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
-
