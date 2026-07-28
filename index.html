@@ -504,10 +504,10 @@
          below it as a genuinely separate box, the always-visible davening
          times box (never day-gated, never mixed into the live list) -->
     <div class="zemanim-col-wrap">
-      <div class="zemanim-col" id="ZMANIM_LIST" style="flex: 2.1;">
+      <div class="zemanim-col" id="ZMANIM_LIST" style="flex: 11;">
         <div class="zemanim-header">זמני היום</div>
       </div>
-      <div class="zemanim-col" id="ZMANIM_TEFILA" style="flex: 1;">
+      <div class="zemanim-col" id="ZMANIM_TEFILA" style="flex: 5;">
         <div class="zemanim-header">זמנים התפילה בימי חול</div>
       </div>
     </div>
@@ -1204,6 +1204,7 @@ function renderTefilaBox(now, dayW, holidayText) {
     rows.push(`<div class="z-row"><span class="z-label">מעריב</span><span class="z-time">${maarivSec!=null ? fmtZmanNoSec(secToTimeStr(maarivSec)) : '--:--'}</span></div>`);
 
     let html = '<div class="zemanim-header">זמנים התפילה בימי חול</div>' + rows.join('');
+    EL['ZMANIM_TEFILA'].style.flex = rows.length;
     if (html !== lastTefilaHTML) {
         lastTefilaHTML = html;
         EL['ZMANIM_TEFILA'].innerHTML = html;
@@ -1378,6 +1379,12 @@ function updateUI() {
 
     // Sort all by time
     zRows.sort((a, b) => a.secVal - b.secVal);
+
+    // Proportional split: this box's share of zemanim-col-wrap's height scales
+    // with its own row count, so a row here and a row in the always-on
+    // זמנים התפילה בימי חול box end up roughly the same height regardless of
+    // day (Shabbos has far more rows here than a regular weekday).
+    if (EL['ZMANIM_LIST']) EL['ZMANIM_LIST'].style.flex = zRows.length;
 
     // Find next upcoming zman for highlight
     let nextId = null;
