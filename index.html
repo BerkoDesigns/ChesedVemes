@@ -1375,9 +1375,10 @@ function updateUI() {
     // day-gated, no live highlighting, rendered independently.
     renderTefilaBox(now, dayW, holidayText);
 
-    // רבינו תם — display only override; rtSecs (Shabbos boundary/flip logic
-    // used throughout updateUI) intentionally stays on the formula value.
-    let rtTime = (pdfOverride && pdfOverride.rabbeinuTam) ? pdfOverride.rabbeinuTam : dDate.z[10];
+    // רבינו תם — always from the Zemanim sheet now (PDF override removed
+    // per request); rtSecs (Shabbos boundary/flip logic used throughout
+    // updateUI) was already on the formula value regardless.
+    let rtTime = dDate.z[10];
     zRows.push({ id:'r12', label:'רבינו תם', timeStr: rtTime, secVal: getSec(rtTime, true) });
 
     // Sort all by time
