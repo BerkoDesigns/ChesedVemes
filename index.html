@@ -204,7 +204,7 @@
   .data-box span {
     font-weight: 400; font-size: 4.8vh; line-height: 1.1;
     display: block; width: 100%; word-wrap: break-word;
-    color: var(--text);
+    color: var(--text); unicode-bidi: plaintext;
   }
   /* Daily Halachos box */
   .rabbi-box {
@@ -234,7 +234,7 @@
     font-size: 4.0vh; line-height: 1.5; color: #1a1a1a;
     font-style: normal; font-weight: 700;
     display: block; width: 100%; word-wrap: break-word;
-    direction: rtl; text-align: center;
+    direction: rtl; text-align: center; unicode-bidi: plaintext;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -248,7 +248,7 @@
     color: #1a4a3a; font-weight: 600; line-height: 1.3;
     width: 100%; height: 100%; display: flex;
     align-items: center; justify-content: center;
-    word-wrap: break-word; overflow: hidden;
+    word-wrap: break-word; overflow: hidden; unicode-bidi: plaintext;
   }
 
   .daf-box {
@@ -328,14 +328,14 @@
     color: var(--gold-dark); font-size: 5.0vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
     font-weight: 400; word-wrap: break-word; width: 100%;
-    padding-bottom: 3px;
+    padding-bottom: 3px; unicode-bidi: plaintext;
     border-bottom: 1px solid #c8b48a;
   }
   .donor-name {
     color: #2e4a44; font-size: 4.2vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
     font-weight: 400; word-wrap: break-word; width: 100%;
-    padding-top: 3px;
+    padding-top: 3px; unicode-bidi: plaintext;
   }
   .donation-empty {
     color: var(--dim); font-size: 2.6vh; text-align: center;
@@ -1906,3 +1906,4 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
+
