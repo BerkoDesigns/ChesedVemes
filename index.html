@@ -1520,7 +1520,18 @@ function updateUI() {
     if (isPesach1 && pastChatzot) isGeshem = false;
 
     let head = "", sub = "", cls = "gold-box";
-    let isPastRT  = (cSec >= rtSecs);
+    // isPastRT: cSec resets to a small number right after midnight, while
+    // rtSecs is last night's evening RT time — a naive cSec >= rtSecs check
+    // would wrongly stay "before RT" for the rest of the night. RT always
+    // happens well before midnight in practice, so once we're in the
+    // midnight-to-3AM continuation window (same window dIso/dDate use for
+    // the date flip), we're unconditionally already past it.
+    let isPastRT  = (cSec >= rtSecs) || (cSec < THREE_AM);
+    // Tachanun-specific: disappears 25 min before RT, not at RT itself —
+    // matches the Rosh Chodesh cutoff (rochCutoff) and Omer flip, which
+    // already both use this same 25-min offset. Only the Tachanun line uses
+    // this — Motzei Yom Tov and general holiday text stay on exact-RT below.
+    let isPastRTMinus25 = (cSec >= rtSecs - 1500) || (cSec < THREE_AM);
 
     // RULE 14: Status Box Priority Chain (8 levels)
     if (isShab) {
@@ -1622,8 +1633,8 @@ function updateUI() {
         } else if (hText !== "" && !isPastRT && !onRCDay) {
             // Other holiday text before RT
             head = hText; sub = tR; cls = "teal-box";
-        } else if (tR !== "" && !isPastRT) {
-            // Tachanun override before RT
+        } else if (tR !== "" && !isPastRTMinus25) {
+            // Tachanun override — disappears 25 min before RT
             head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
         } else {
             // Default
@@ -1906,4 +1917,3 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
-
