@@ -600,7 +600,8 @@ function initEls() {
 
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr9nQSnr4zjazj8uT1JaHovhaebiUBlTawPntUWpR2mztum2eLsoaO04oVKgwvOkdPJQ/exec";
 
-var defaultSummerMsg = "", shabbosPic = "", tefilaOverride = "";
+var defaultSummerMsg = "", tefilaOverride = "";
+var shabbosPics = [], shabbosRotationEnabled = false, shabbosIndex = 0, shabbosRotateTimer = null;
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
 var pdfZmanimList = [];
 var currentlyHighlightedId = null;
@@ -1081,27 +1082,53 @@ function rotateP1() {
     }, 800);
 }
 
+// Mirrors rotateP1() but scoped to the Shabbos image list — only ever runs
+// during Kodesh, and only when shabbosRotationEnabled is on and there's more
+// than one Shabbos image. Otherwise updateP1Image freezes on shabbosPics[0],
+// exactly like the original single-image behavior.
+function rotateShabbos() {
+    if (shabbosPics.length === 0) return;
+    const img = EL['PORT_IMG'];
+    if (!img) return;
+    img.style.opacity = 0;
+    setTimeout(() => {
+        img.src = "https://lh3.googleusercontent.com/d/" + shabbosPics[shabbosIndex] + "=w1200";
+        img.style.opacity = 1;
+        shabbosIndex = (shabbosIndex + 1) % shabbosPics.length;
+    }, 800);
+}
+
 function updateP1Image(isKodesh) {
     const img = EL['PORT_IMG'];
     if (!img) return;
 
     if (isKodesh) {
-        // Force stop rotation during Kodesh
-        if (p1RotateTimer) {
-            clearInterval(p1RotateTimer);
-            p1RotateTimer = null;
-        }
         isShabbosImageActive = true;
-        // Only set src if not already showing the Shabbos image
-        const shabbosSrc = shabbosPic ? "https://lh3.googleusercontent.com/d/" + shabbosPic + "=w1200" : "";
-        if (img.src !== shabbosSrc) {
-            img.style.opacity = 0;
-            setTimeout(() => { img.src = shabbosSrc; img.style.opacity = 1; }, 800);
+        if (shabbosRotationEnabled && shabbosPics.length > 1) {
+            // Rotate among the Shabbos images — stop the regular weekday
+            // timer (if it was somehow still running) and start a Shabbos
+            // one instead, same 15s cadence as weekday rotation.
+            if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+            if (!shabbosRotateTimer) {
+                rotateShabbos();
+                shabbosRotateTimer = setInterval(rotateShabbos, 15000);
+            }
+        } else {
+            // Default (unchanged) behavior: freeze on the first Shabbos image.
+            if (shabbosRotateTimer) { clearInterval(shabbosRotateTimer); shabbosRotateTimer = null; }
+            if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+            const shabbosSrc = shabbosPics[0] ? "https://lh3.googleusercontent.com/d/" + shabbosPics[0] + "=w1200" : "";
+            if (img.src !== shabbosSrc) {
+                img.style.opacity = 0;
+                setTimeout(() => { img.src = shabbosSrc; img.style.opacity = 1; }, 800);
+            }
         }
     } else {
-        // Only restart if it was previously frozen
+        // Only restart weekday rotation if we were previously frozen/rotating for Shabbos
         if (isShabbosImageActive) {
             isShabbosImageActive = false;
+            if (shabbosRotateTimer) { clearInterval(shabbosRotateTimer); shabbosRotateTimer = null; }
+            shabbosIndex = 0;
             const activeImgs = getActiveImages();
             if (activeImgs.length > 1 && p1Rotation) {
                 rotateP1();
@@ -1754,7 +1781,8 @@ function applyData(d) {
     // ── IMAGE ROTATION SETUP ──────────────────────────────────────
     p1Images      = d.p1List      || [];
     activeImageId = d.activeImageId || "";
-    shabbosPic    = d.shabbosPic   || "";
+    shabbosPics   = d.shabbosPics || (d.shabbosPic ? [d.shabbosPic] : []);
+    shabbosRotationEnabled = !!d.shabbosRotationEnabled;
     p1Rotation    = d.p1Rotation !== false;
     imageExpiryMap = d.imageExpiryMap || {};
 
