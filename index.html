@@ -1111,7 +1111,7 @@ function updateP1Image(isKodesh) {
             if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
             if (!shabbosRotateTimer) {
                 rotateShabbos();
-                shabbosRotateTimer = setInterval(rotateShabbos, 15000);
+                shabbosRotateTimer = setInterval(rotateShabbos, 13000);
             }
         } else {
             // Default (unchanged) behavior: freeze on the first Shabbos image.
@@ -1132,7 +1132,7 @@ function updateP1Image(isKodesh) {
             const activeImgs = getActiveImages();
             if (activeImgs.length > 1 && p1Rotation) {
                 rotateP1();
-                p1RotateTimer = setInterval(rotateP1, 15000);
+                p1RotateTimer = setInterval(rotateP1, 13000);
             } else {
                 rotateP1(); // single image or rotation off
             }
@@ -1810,7 +1810,7 @@ function applyData(d) {
             rotateP1();
         } else if (p1Images.length > 0 && !p1RotateTimer) {
             rotateP1();
-            p1RotateTimer = setInterval(rotateP1, 15000);
+            p1RotateTimer = setInterval(rotateP1, 13000);
         }
     }
 
