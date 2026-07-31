@@ -602,6 +602,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr9nQSnr4zjazj8uT1J
 
 var defaultSummerMsg = "", tefilaOverride = "";
 var shabbosPics = [], shabbosRotationEnabled = false, shabbosIndex = 0, shabbosRotateTimer = null;
+var resolvedFallbackId = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
 var pdfZmanimList = [];
 var currentlyHighlightedId = null;
@@ -1086,15 +1087,24 @@ function rotateP1() {
 // during Kodesh, and only when shabbosRotationEnabled is on and there's more
 // than one Shabbos image. Otherwise updateP1Image freezes on shabbosPics[0],
 // exactly like the original single-image behavior.
+// Same filtering pattern as getActiveImages() (weekday), scoped to Shabbos —
+// reuses the same generic isImageExpired()/imageExpiryMap, since expiry was
+// never weekday-specific to begin with.
+function getActiveShabbosImages() {
+    return shabbosPics.filter(id => !isImageExpired(id));
+}
+
 function rotateShabbos() {
-    if (shabbosPics.length === 0) return;
+    const active = getActiveShabbosImages();
+    if (active.length === 0) return;
     const img = EL['PORT_IMG'];
     if (!img) return;
+    if (shabbosIndex >= active.length) shabbosIndex = 0;
     img.style.opacity = 0;
     setTimeout(() => {
-        img.src = "https://lh3.googleusercontent.com/d/" + shabbosPics[shabbosIndex] + "=w1200";
+        img.src = "https://lh3.googleusercontent.com/d/" + active[shabbosIndex] + "=w1200";
         img.style.opacity = 1;
-        shabbosIndex = (shabbosIndex + 1) % shabbosPics.length;
+        shabbosIndex = (shabbosIndex + 1) % active.length;
     }, 800);
 }
 
@@ -1104,20 +1114,31 @@ function updateP1Image(isKodesh) {
 
     if (isKodesh) {
         isShabbosImageActive = true;
-        if (shabbosRotationEnabled && shabbosPics.length > 1) {
-            // Rotate among the Shabbos images — stop the regular weekday
-            // timer (if it was somehow still running) and start a Shabbos
-            // one instead, same 15s cadence as weekday rotation.
+        const activeShabbos = getActiveShabbosImages();
+        if (activeShabbos.length === 0) {
+            // All Shabbos images expired (or none uploaded) — same fallback
+            // logo the weekday images use when everything's expired there too.
+            if (shabbosRotateTimer) { clearInterval(shabbosRotateTimer); shabbosRotateTimer = null; }
+            if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
+            const fallbackSrc = resolvedFallbackId ? "https://lh3.googleusercontent.com/d/" + resolvedFallbackId + "=w1200" : "";
+            if (fallbackSrc && img.src !== fallbackSrc) {
+                img.style.opacity = 0;
+                setTimeout(() => { img.src = fallbackSrc; img.style.opacity = 1; }, 800);
+            }
+        } else if (shabbosRotationEnabled && activeShabbos.length > 1) {
+            // Rotate among the non-expired Shabbos images — stop the regular
+            // weekday timer (if it was somehow still running) and start a
+            // Shabbos one instead, same cadence as weekday rotation.
             if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
             if (!shabbosRotateTimer) {
                 rotateShabbos();
                 shabbosRotateTimer = setInterval(rotateShabbos, 14000);
             }
         } else {
-            // Default (unchanged) behavior: freeze on the first Shabbos image.
+            // Default (unchanged) behavior: freeze on the first non-expired Shabbos image.
             if (shabbosRotateTimer) { clearInterval(shabbosRotateTimer); shabbosRotateTimer = null; }
             if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
-            const shabbosSrc = shabbosPics[0] ? "https://lh3.googleusercontent.com/d/" + shabbosPics[0] + "=w1200" : "";
+            const shabbosSrc = "https://lh3.googleusercontent.com/d/" + activeShabbos[0] + "=w1200";
             if (img.src !== shabbosSrc) {
                 img.style.opacity = 0;
                 setTimeout(() => { img.src = shabbosSrc; img.style.opacity = 1; }, 800);
@@ -1785,9 +1806,10 @@ function applyData(d) {
     shabbosRotationEnabled = !!d.shabbosRotationEnabled;
     p1Rotation    = d.p1Rotation !== false;
     imageExpiryMap = d.imageExpiryMap || {};
+    resolvedFallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
 
     // Handle image expiry — if expired, override activeImageId with fallback
-    const fallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
+    const fallbackId = resolvedFallbackId;
     if (d.imageExpiry) {
         const expiry = new Date(String(d.imageExpiry).replace(' ', 'T'));
         if (!isNaN(expiry.getTime()) && new Date() > expiry) {
@@ -1945,3 +1967,4 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
+
