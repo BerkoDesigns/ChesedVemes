@@ -1045,9 +1045,20 @@ function rotateP1() {
     if (p1Images.length === 0 || isShabbosImageActive) return;
     const img = EL['PORT_IMG'];
     if (!img) return;
-    // Single image — no cycling needed, only set src if not already showing it
-    if (p1Images.length === 1) {
-        const id = activeImageId || p1Images[0] || "";
+    const active = getActiveImages();
+    if (active.length === 0) {
+        // Every uploaded image is expired — same fallback logo used
+        // elsewhere (applyData's own expiry check, and the Shabbos rotation).
+        const fallbackSrc = resolvedFallbackId ? "https://lh3.googleusercontent.com/d/" + resolvedFallbackId + "=w1200" : "";
+        if (fallbackSrc && img.src !== fallbackSrc) {
+            img.style.opacity = 0;
+            setTimeout(() => { img.src = fallbackSrc; img.style.opacity = 1; }, 800);
+        }
+        return;
+    }
+    // Single active image — no cycling needed, only set src if not already showing it
+    if (active.length === 1) {
+        const id = (active.includes(activeImageId) ? activeImageId : active[0]) || "";
         if (id) {
             const newSrc = "https://lh3.googleusercontent.com/d/" + id + "=w1200";
             if (img.src !== newSrc) {
@@ -1057,9 +1068,9 @@ function rotateP1() {
         }
         return;
     }
-    // Rotation off — show active/first image only, skip fade if already showing it
+    // Rotation off — show active/first non-expired image only, skip fade if already showing it
     if (!p1Rotation) {
-        const id = activeImageId || p1Images[0] || "";
+        const id = (active.includes(activeImageId) ? activeImageId : active[0]) || "";
         if (id) {
             const newSrc = "https://lh3.googleusercontent.com/d/" + id + "=w1200";
             if (img.src !== newSrc) {
@@ -1069,17 +1080,13 @@ function rotateP1() {
         }
         return;
     }
-    // Rotate — advance index past expired images
-    let attempts = 0;
-    while (isImageExpired(p1Images[p1Index]) && attempts < p1Images.length) {
-        p1Index = (p1Index + 1) % p1Images.length;
-        attempts++;
-    }
+    // Rotate among the non-expired images only
+    if (p1Index >= active.length) p1Index = 0;
     img.style.opacity = 0;
     setTimeout(() => {
-        img.src = "https://lh3.googleusercontent.com/d/" + p1Images[p1Index] + "=w1200";
+        img.src = "https://lh3.googleusercontent.com/d/" + active[p1Index] + "=w1200";
         img.style.opacity = 1;
-        p1Index = (p1Index + 1) % p1Images.length;
+        p1Index = (p1Index + 1) % active.length;
     }, 800);
 }
 
@@ -1967,4 +1974,3 @@ setInterval(() => checkAndCapture(false), 300000);
 </script>
 </body>
 </html>
-
