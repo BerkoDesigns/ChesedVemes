@@ -987,6 +987,21 @@ function fitInBox(el, container, vhStart) {
     }
 }
 
+// Same idea as fitInBox, but for a whole group of elements that should all
+// end up the SAME size (e.g. several pills side by side) — sizes them all
+// together in lockstep, rather than fitting each one independently (which
+// resets and re-shrinks one at a time, leaving them mismatched and not
+// actually guaranteeing the combined group fits).
+function fitGroupInBox(els, container, vhStart) {
+    if (!els || !els.length || !container) return;
+    let vh = vhStart;
+    els.forEach(el => el.style.fontSize = vh + "vh");
+    while (container.scrollHeight > container.clientHeight && vh > 1.0) {
+        vh = Math.max(1.0, vh - 0.15);
+        els.forEach(el => el.style.fontSize = vh + "vh");
+    }
+}
+
 // fitExpand: grow text UP to fill available space, also shrink below vhStart if needed
 function fitExpand(el, vhStart, vhMax) {
     if (!el) return;
@@ -1886,7 +1901,8 @@ function updateUI() {
         if (seasonLine) {
             let msgBoxEl = EL['LEFT_MSG'].querySelector('.message-box');
             if (msgBoxEl) {
-                msgBoxEl.querySelectorAll('.season-pill').forEach(pill => fitInBox(pill, msgBoxEl, 2.6));
+                let pills = Array.from(msgBoxEl.querySelectorAll('.season-pill'));
+                fitGroupInBox(pills, msgBoxEl, 2.6);
             }
         }
     }
