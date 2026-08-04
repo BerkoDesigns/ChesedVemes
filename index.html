@@ -881,6 +881,65 @@ function extractHebDay(hebStr) {
     for (let ch of tok) { if (HEB_VALS[ch] !== undefined) total += HEB_VALS[ch]; }
     return total;
 }
+
+// Returns just the month word (the second space-separated token — day,
+// month, year), not month+year combined. Uses exact equality rather than
+// .includes() for month checks below, since a plain substring search could
+// false-match a short month name against gematria characters inside the
+// year token.
+function getHebMonthOnly(hebStr) {
+    let parts = (hebStr || "").trim().split(/\s+/);
+    return parts.length >= 2 ? parts[1] : "";
+}
+
+// ── HARDCODED NO-TACHANUN DAYS (item 5) ─────────────────────────────
+// Independent of the sheet's Reason tab — computed purely from the Hebrew
+// date. Chesed V'Emes-specific list (Bayswater has its own, see its
+// board.html — cutoffs differ: Sivan/Shavuot window, and the after-Sukkot
+// window). ASSUMPTIONS flagged for the user to verify against the real
+// sheet: Adar spelled plain "אדר" (non-leap year), "אדר-א" (Adar Rishon),
+// "אדר-ב" (Adar Sheni) in a leap year — Purim Katan uses Adar Rishon,
+// real Purim uses Adar Sheni (or plain Adar in a non-leap year).
+function findKislev25Iso(todayIso) {
+    if (!schedule) return null;
+    let isos = Object.keys(schedule).sort();
+    let todayMs = new Date(todayIso).getTime();
+    for (let iso of isos) {
+        let heb = (schedule[iso] || {}).heb || "";
+        if (getHebMonthOnly(heb) === "כסלו" && extractHebDay(heb) === 25) {
+            // Only take the occurrence near today (within ~40 days) —
+            // schedule may span more than one Kislev across years.
+            if (Math.abs(new Date(iso).getTime() - todayMs) < 40 * 86400000) return iso;
+        }
+    }
+    return null;
+}
+
+function isChesedVemesNoTachanunDay(heb, todayIso) {
+    if (!heb) return false;
+    let month = getHebMonthOnly(heb);
+    let day = extractHebDay(heb);
+
+    if (month === "אב" && (day === 15 || day === 9)) return true;      // Tu B'Av, Tisha B'Av
+    if (month === "שבט" && day === 15) return true;                    // Tu B'Shvat
+    if (month === "אייר" && (day === 14 || day === 18)) return true;   // Pesach Sheni, Lag Ba'omer
+    if (month === "ניסן") return true;                                 // Entire Nissan
+    if (month === "תשרי" && day >= 11 && day <= 14) return true;       // Between YK and Sukkot
+    if (month === "סיון" && day <= 7) return true;                     // RC Sivan through day after Shavuos
+    // Purim / Shushan Purim (real Adar or Adar Sheni), Purim Katan (Adar Rishon)
+    if ((month === "אדר" || month === "אדר-ב") && (day === 14 || day === 15)) return true;
+    if (month === "אדר-א" && (day === 14 || day === 15)) return true;
+    // Chanukah — 8 days from Kislev 25, computed by ISO offset since it
+    // spans into Tevet and the exact end date depends on Kislev's length
+    // that year (29 or 30 days).
+    let k25 = findKislev25Iso(todayIso);
+    if (k25) {
+        let diffDays = (new Date(todayIso).getTime() - new Date(k25).getTime()) / 86400000;
+        if (diffDays >= 0 && diffDays <= 7) return true;
+    }
+    return false;
+}
+
 // ── ELUL SEASON (לדוד ה' אורי / שופר / סליחות) ─────────────────────
 // Subtracts `days` from an ISO date string, returning a new ISO string.
 function getIsoMinusDays(iso, days) {
@@ -1791,6 +1850,23 @@ function updateUI() {
     if (!tR) tR = (dToday.tachReason || "").trim(); // fallback to today's tachanun reason
     // אסרו חג always means "no Tachanun" — no sheet entry needed at all.
     if (!tR && hText.includes("אסרו חג")) tR = "אסרו חג";
+    // Hardcoded no-Tachanun days (item 5) — independent of the sheet.
+    // Skipped during Chol Hamoed since its own name is already the head.
+    let isCholHamoedNow = hText.includes("חול המועד") || (dToday.holidayText || "").includes("חול המועד");
+    if (!tR && !isCholHamoedNow && isChesedVemesNoTachanunDay(dDate.heb || "", statusIso)) {
+        tR = "אין אומרים תחנון";
+    }
+    // Mincha-eve extension (Chesed V'Emes says Tachanun at Mincha, unlike
+    // Bayswater): the evening before a hardcoded no-Tachanun day, from 15
+    // min before Shkiah, Tachanun is also not said at Mincha tonight.
+    if (!tR) {
+        let tomorrowIso = getIso(new Date(new Date(dIso).getTime() + 86400000));
+        let tomorrowHeb = (schedule[tomorrowIso] || {}).heb || "";
+        if (isChesedVemesNoTachanunDay(tomorrowHeb, tomorrowIso)) {
+            let shkiaSec = getSec(dToday.z[9], true);
+            if (cSec >= shkiaSec - 900) tR = "אין אומרים תחנון"; // 15 min before Shkiah
+        }
+    }
 
     // RULE 17: Geshem Season - Oct-Apr with edge refinements
     // RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
