@@ -942,19 +942,40 @@ function computeGeshemTalDates() {
     if (!schedule) return;
     let todayIso = getIso(new Date());
     let isos = Object.keys(schedule).sort();
-    let firstShminiAtzeret = null;
+
+    let allSA = [], allPesach = [];
     for (let iso of isos) {
         let heb = (schedule[iso] || {}).heb || "";
-        if (!heb.includes("תשרי") || extractHebDay(heb) !== 22) continue;
-        if (!firstShminiAtzeret) firstShminiAtzeret = iso;
-        if (iso <= todayIso) geshemStartIso = iso; // keep advancing to the latest one <= today
+        if (heb.includes("תשרי") && extractHebDay(heb) === 22) allSA.push(iso);
+        if (heb.includes("ניסן") && extractHebDay(heb) === 15) allPesach.push(iso);
     }
-    if (!geshemStartIso) geshemStartIso = firstShminiAtzeret; // today is before all known ones
-    if (!geshemStartIso) return;
-    for (let iso of isos) {
-        if (iso <= geshemStartIso) continue;
-        let heb = (schedule[iso] || {}).heb || "";
-        if (heb.includes("ניסן") && extractHebDay(heb) === 15) { geshemEndIso = iso; break; }
+    if (!allSA.length && !allPesach.length) return;
+
+    // Whichever boundary most recently occurred (at or before today) tells
+    // us which season we're actually in — checking Shmini Atzeret's
+    // presence alone isn't enough, since a sheet that doesn't go back far
+    // enough could be missing last year's SA even though we're clearly
+    // past a more recent Pesach (i.e. currently in Tal season, though
+    // Chesed V'Emes doesn't display anything then — this still matters for
+    // correctly finding the NEXT Geshem season's start).
+    let lastSA = null;     for (let iso of allSA) if (iso <= todayIso) lastSA = iso;
+    let lastPesach = null; for (let iso of allPesach) if (iso <= todayIso) lastPesach = iso;
+
+    if (lastSA && (!lastPesach || lastSA > lastPesach)) {
+        geshemStartIso = lastSA;
+        for (let iso of allPesach) { if (iso > geshemStartIso) { geshemEndIso = iso; break; } }
+    } else if (lastPesach) {
+        geshemEndIso = lastPesach;
+        for (let i = allSA.length - 1; i >= 0; i--) { if (allSA[i] < geshemEndIso) { geshemStartIso = allSA[i]; break; } }
+    } else if (lastSA) {
+        geshemStartIso = lastSA;
+    } else {
+        if (allSA.length && (!allPesach.length || allSA[0] <= allPesach[0])) {
+            geshemStartIso = allSA[0];
+            for (let iso of allPesach) { if (iso > geshemStartIso) { geshemEndIso = iso; break; } }
+        } else if (allPesach.length) {
+            geshemEndIso = allPesach[0];
+        }
     }
 }
 
