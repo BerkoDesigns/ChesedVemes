@@ -1927,8 +1927,12 @@ function updateUI() {
             // Day of Rosh Chodesh — show until 25 min before RT
             head = rcHeadText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
         } else if (hText !== "" && !isPastRT && !onRCDay) {
-            // Other holiday text before RT
-            head = hText; sub = tR; cls = "teal-box";
+            // Other holiday text before RT. Guard against tR happening to
+            // equal hText itself (e.g. אסרו חג, where both the holiday name
+            // and the Tachanun-reason default resolve to the same string).
+            head = hText;
+            sub = (tR === hText) ? "" : tR;
+            cls = "teal-box";
         } else if (tR !== "" && !isPastRTMinus25) {
             // Tachanun override — disappears 25 min before RT. If tR is
             // just the generic fallback (matched in the Reason tab but
