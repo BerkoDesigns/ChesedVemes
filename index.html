@@ -993,9 +993,8 @@ function isGeshemActive(todayIso, cSecNow) {
         return cSecNow < getSec(entry.z[7], true);
     }
     if (season === 'tal' && boundary === todayIso) {
-        // today IS Shmini Atzeret itself — Geshem starts at Mincha Gedolah
-        let entry = schedule[todayIso];
-        if (entry && entry.z) return cSecNow >= getSec(entry.z[7], true);
+        // today IS Shmini Atzeret itself — Geshem starts at a fixed 12:00 PM
+        return cSecNow >= 43200;
     }
     return false;
 }
@@ -1072,14 +1071,18 @@ function fitUnifiedStatusBox(container, vhStart) {
     let sub   = container.querySelector('#status-sub');
     let klText = container.querySelector('#status-kl-text');
     let pills = Array.from(container.querySelectorAll('.season-pill'));
-    let geshemTal = container.querySelector('.geshem-tal-text');
+    // .geshem-tal-demoted only exists when מוריד הגשם/הטל is paired with
+    // something specific (not the plain default) — sized like a pill.
+    // When promoted, the text is folded directly into #status-head instead
+    // and gets sized at the full unit automatically.
+    let geshemTalDemoted = container.querySelector('.geshem-tal-demoted');
 
     function applyUnit(u) {
         if (head) head.style.fontSize = u + "vh";
         if (sub) sub.style.fontSize = (u * 0.65) + "vh";
         if (klText) klText.style.fontSize = (u * 0.55) + "vh";
         pills.forEach(p => p.style.fontSize = (u * 0.45) + "vh");
-        if (geshemTal) geshemTal.style.fontSize = (u * 0.65) + "vh";
+        if (geshemTalDemoted) geshemTalDemoted.style.fontSize = (u * 0.45) + "vh";
     }
 
     let unit = vhStart;
@@ -1783,6 +1786,8 @@ function updateUI() {
     updateP1Image(isKodesh);
     let tR = (schedule[statusIso] ? (schedule[statusIso].tachReason || "") : (dDate.tachReason || "")).trim();
     if (!tR) tR = (dToday.tachReason || "").trim(); // fallback to today's tachanun reason
+    // אסרו חג always means "no Tachanun" — no sheet entry needed at all.
+    if (!tR && hText.includes("אסרו חג")) tR = "אסרו חג";
 
     // RULE 17: Geshem Season - Oct-Apr with edge refinements
     // RULE 18: Tal Umatar Season - Dec 4 - Pesach, replaces ותן ברכה
@@ -1963,20 +1968,33 @@ function updateUI() {
     // מוריד הטל substitute during the summer months, so this stays blank then.
     let geshemTalText = "";
     if (isGeshemActive(todayIsoForSeason, cSec)) geshemTalText = "מוריד הגשם";
-    let geshemTalLine = geshemTalText ? `<span class="geshem-tal-text">${geshemTalText}</span>` : "";
+
+    // Priority: מוריד הגשם is promoted (large, on top, replacing the head)
+    // only when paired with the plain default (ותן ברכה/ותן טל ומטר) — the
+    // default text then drops to a small line right below it. Paired with
+    // anything specific (holiday text, Tachanun reason, אסרו חג, חול המועד,
+    // שבת מברכים, etc.) it stays demoted at the bottom of the box instead,
+    // small, so the specific content keeps priority on top.
+    let isPlainDefaultHead = (head === "ותן טל ומטר" || head === "ותן ברכה");
+    let geshemPromoted = isPlainDefaultHead && !!geshemTalText;
+    let displayHead = geshemPromoted ? geshemTalText : head;
+    let demotedDefaultLine = geshemPromoted ? `<span id="status-sub">${head}</span>` : "";
+    let demotedGeshemLine = (!geshemPromoted && geshemTalText)
+        ? `<span class="geshem-tal-text geshem-tal-demoted">${geshemTalText}</span>`
+        : "";
 
     let hasExtra = sub || showKL || seasonPills.length > 0 || geshemTalText;
     let headSize = hasExtra ? 6.2 : 8.5;
     // Build the box as a list of present blocks, joined with a thin divider
     // between each — so whether it's 2 texts (head+sub) or 3 (head+sub+pills),
     // people can tell at a glance they're separate pieces of information.
-    // מוריד הגשם/מוריד הטל always goes above ותן ברכה/ותן טל ומטר.
     let statusBlocks = [];
-    if (geshemTalLine) statusBlocks.push(geshemTalLine);
-    statusBlocks.push(`<span id="status-head" style="font-size:${headSize}vh">${head}</span>`);
+    statusBlocks.push(`<span id="status-head" style="font-size:${headSize}vh">${displayHead}</span>`);
+    if (demotedDefaultLine) statusBlocks.push(demotedDefaultLine);
     if (sub) statusBlocks.push(`<span id="status-sub">${sub}</span>`);
     if (klLine) statusBlocks.push(klLine);
     if (seasonLine) statusBlocks.push(seasonLine);
+    if (demotedGeshemLine) statusBlocks.push(demotedGeshemLine);
     let textSep = '<div class="text-sep"></div>';
     let sH = `<div class="message-box ${cls}" style="justify-content:${hasExtra ? 'space-evenly' : 'center'}">${statusBlocks.join(textSep)}</div>`;
     if (sH !== currentStatusHTML) {
