@@ -924,7 +924,7 @@ function computeSeasonDates() {
         if (!elulTriggerDayIso && heb.includes("אלול") && day === 1) elulTriggerDayIso = iso;
         if (!roshHashanahIso && heb.includes("תשרי") && day === 1) roshHashanahIso = iso;
         if (!yomKippurIso && heb.includes("תשרי") && day === 10) yomKippurIso = iso;
-        if (!shminiAtzeretIso && heb.includes("תשרి") && day === 22) shminiAtzeretIso = iso;
+        if (!shminiAtzeretIso && heb.includes("תשרי") && day === 22) shminiAtzeretIso = iso;
         if (!pesach1Iso && heb.includes("ניסן") && day === 15) pesach1Iso = iso;
     }
     if (elulTriggerDayIso) elulEveIso = getIsoMinusDays(elulTriggerDayIso, 1);
