@@ -1849,7 +1849,11 @@ function updateUI() {
     let tR = (schedule[statusIso] ? (schedule[statusIso].tachReason || "") : (dDate.tachReason || "")).trim();
     if (!tR) tR = (dToday.tachReason || "").trim(); // fallback to today's tachanun reason
     // אסרו חג always means "no Tachanun" — no sheet entry needed at all.
-    if (!tR && hText.includes("אסרו חג")) tR = "אסרו חג";
+    // Set tR to the explicit no-Tachanun text (not "אסרו חג" itself) so it
+    // shows as a distinct, informative sub-line under the אסרו חג head,
+    // rather than duplicating the head text and getting suppressed by the
+    // anti-duplicate guard below.
+    if (!tR && hText.includes("אסרו חג")) tR = "אין אומרים תחנון";
     // Hardcoded no-Tachanun days (item 5) — independent of the sheet.
     // Skipped during Chol Hamoed since its own name is already the head.
     let isCholHamoedNow = hText.includes("חול המועד") || (dToday.holidayText || "").includes("חול המועד");
@@ -1962,7 +1966,8 @@ function updateUI() {
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (nextDayIsYomTov && hText) {
-            // Tomorrow is Yom Tov — show holiday with ותודיענו
+            // Tomorrow is Yom Tov — show holiday with ותודיענו. No default
+            // blessing here since tomorrow's davening is Yom Tov, not weekday.
             head = hText; sub = "ותודיענו"; cls = "teal-box";
         } else if (hText !== "") {
             if (hText.includes("ראש חודש")) {
@@ -1970,8 +1975,10 @@ function updateUI() {
             } else {
                 head = hText; sub = "אתה חוננתנו"; cls = "teal-box";
             }
+            showDefaultBlessingExtra = true;
         } else {
             head = "מוצאי שבת"; sub = "אתה חוננתנו";
+            showDefaultBlessingExtra = true;
         }
     } else if (isYomTovStatus) {
         let dNextDay = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
@@ -1979,6 +1986,7 @@ function updateUI() {
         
         if (!nextDayIsYomTov && isPastRT) {
             head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
+            showDefaultBlessingExtra = true;
         } else {
             head = hText || "יום טוב"; sub = tR; cls = "teal-box";
         }
