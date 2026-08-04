@@ -1985,6 +1985,17 @@ function updateUI() {
     // מוריד הטל substitute during the summer months, so this stays blank then.
     let geshemTalText = "";
     if (isGeshemActive(todayIsoForSeason, cSec)) geshemTalText = "מוריד הגשם";
+    if (!geshemTalText) {
+        // Precise Hebrew-date system found nothing for today — check
+        // whether that's legitimately correct (we're really in Tal season,
+        // Chesed V'Emes shows nothing) or a data gap (the sheet doesn't
+        // reach back far enough to find the real Geshem-season boundary).
+        // If the civil-month approximation says this SHOULD be Geshem
+        // season, use it as a fallback rather than showing nothing.
+        let civMonthFallback = new Date().getMonth() + 1;
+        let isGeshemApprox = (civMonthFallback >= 10 || civMonthFallback <= 4);
+        if (isGeshemApprox) geshemTalText = "מוריד הגשם";
+    }
     let geshemTalLine = geshemTalText ? `<span class="geshem-tal-text">${geshemTalText}</span>` : "";
 
     let hasExtra = sub || showKL || seasonPills.length > 0 || geshemTalText;
