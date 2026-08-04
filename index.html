@@ -130,6 +130,13 @@
   }
   .teal-box { background: #A8D5CC; color: #000; }
   .gold-box  { color: var(--gold-dark); background: var(--box); }
+  /* Elul season lines (לדוד ה' אורי / שופר / סליחות) — Option A: compact pills */
+  .season-line { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .season-pill {
+    font-family: 'Assistant', sans-serif; font-weight: 700; font-size: 1.8vh;
+    background: #ffffffaa; border: 1px solid var(--gold-dark); color: var(--gold-dark);
+    border-radius: 20px; padding: 2px 10px;
+  }
   #status-head { font-size: 6.2vh; line-height: 1.0; display: block; width: 100%; }
   #status-sub  { font-size: 3.2vh; color: #000; display: block; width: 100%; white-space: normal; line-height: 1.0; }
   #status-kl {
@@ -604,6 +611,14 @@ var defaultSummerMsg = "", tefilaOverride = "";
 var shabbosPics = [], shabbosRotationEnabled = false, shabbosIndex = 0, shabbosRotateTimer = null;
 var resolvedFallbackId = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
+// Elul season (לדוד ה' אורי / שופר / סליחות) — reference dates computed once
+// per data load by computeSeasonDates(), not recalculated every second.
+var elulTriggerDayIso = null;   // 1 Elul (day 2 of the 2-day Rosh Chodesh)
+var elulEveIso = null;          // 30 Av — the evening-before trigger day
+var roshHashanahIso = null;     // 1 Tishrei
+var yomKippurIso = null;        // 10 Tishrei
+var shminiAtzeretIso = null;    // 22 Tishrei — לדוד's end date (Chesed V'Emes)
+var selichotStartIso = null;    // the Saturday whose night Selichot begins
 var pdfZmanimList = [];
 var currentlyHighlightedId = null;
 var lastRabbiText = null;
@@ -856,6 +871,98 @@ function extractHebDay(hebStr) {
     for (let ch of tok) { if (HEB_VALS[ch] !== undefined) total += HEB_VALS[ch]; }
     return total;
 }
+// ── ELUL SEASON (לדוד ה' אורי / שופר / סליחות) ─────────────────────
+// Subtracts `days` from an ISO date string, returning a new ISO string.
+function getIsoMinusDays(iso, days) {
+    let d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() - days);
+    return getIso(d);
+}
+
+// Ashkenazi Selichot start: the Motzei Shabbat immediately before Rosh
+// Hashanah — pushed back one additional week if RH falls on Monday or
+// Tuesday, to guarantee at least 4 days of Selichot beforehand. RH can only
+// ever fall on Mon/Tue/Thu/Sat (never Sun/Wed/Fri), so those are the only
+// day-of-week values this needs to handle.
+function computeSelichotStartIso(rhIso) {
+    let rhDate = new Date(rhIso + 'T00:00:00');
+    let rhDow = rhDate.getDay();
+    let daysBackToSat = (rhDow === 6) ? 7 : (rhDow + 1);
+    let start = getIsoMinusDays(rhIso, daysBackToSat);
+    if (rhDow === 1 || rhDow === 2) start = getIsoMinusDays(start, 7);
+    return start;
+}
+
+// Scans the loaded schedule once (called from applyData after schedule
+// loads, not every second) to find this Hebrew-year's key Elul/Tishrei
+// dates. Only considers dates from ~60 days before today onward, so a
+// schedule spanning more than one Hebrew year always resolves to the
+// current/upcoming season rather than a stale past one.
+function computeSeasonDates() {
+    elulTriggerDayIso = null; elulEveIso = null;
+    roshHashanahIso = null; yomKippurIso = null; shminiAtzeretIso = null;
+    selichotStartIso = null;
+    if (!schedule) return;
+    let searchFloor = getIsoMinusDays(getIso(new Date()), 60);
+    let isos = Object.keys(schedule).sort();
+    for (let iso of isos) {
+        if (iso < searchFloor) continue;
+        let heb = (schedule[iso] || {}).heb || "";
+        if (!heb) continue;
+        let day = extractHebDay(heb);
+        if (!elulTriggerDayIso && heb.includes("אלול") && day === 1) elulTriggerDayIso = iso;
+        if (!roshHashanahIso && heb.includes("תשרי") && day === 1) roshHashanahIso = iso;
+        if (!yomKippurIso && heb.includes("תשרי") && day === 10) yomKippurIso = iso;
+        if (!shminiAtzeretIso && heb.includes("תשרי") && day === 22) shminiAtzeretIso = iso;
+    }
+    if (elulTriggerDayIso) elulEveIso = getIsoMinusDays(elulTriggerDayIso, 1);
+    if (roshHashanahIso) selichotStartIso = computeSelichotStartIso(roshHashanahIso);
+}
+
+// Shared "starts the evening before a target date, N minutes before RT"
+// trigger used by both לדוד and שופר's season start.
+function isPastEveningTrigger(targetEveIso, todayIso, cSecNow, offsetMinutes) {
+    if (!targetEveIso) return false;
+    if (todayIso > targetEveIso) return true;
+    if (todayIso < targetEveIso) return false;
+    // todayIso === targetEveIso: check time-of-day against RT - offset
+    let eveEntry = schedule[todayIso];
+    if (!eveEntry || !eveEntry.z) return false;
+    let rtSecsEve = getSec(eveEntry.z[10], true);
+    return cSecNow >= (rtSecsEve - offsetMinutes * 60);
+}
+
+function isLedavidActive(todayIso, cSecNow) {
+    if (!elulEveIso) return false;
+    if (!isPastEveningTrigger(elulEveIso, todayIso, cSecNow, 25)) return false; // Chesed V'Emes: 25 min
+    if (!shminiAtzeretIso) return true; // end date not yet known — show anyway
+    if (todayIso < shminiAtzeretIso) return true;
+    if (todayIso === shminiAtzeretIso) return cSecNow < 43200; // midday cutoff
+    return false;
+}
+
+function isShofarActive(todayIso, cSecNow, dayW) {
+    if (dayW === 6) return false; // never on Shabbos
+    if (!elulEveIso || !roshHashanahIso) return false;
+    if (!isPastEveningTrigger(elulEveIso, todayIso, cSecNow, 25)) return false; // Chesed V'Emes: 25 min
+    let shofarEndIso = getIsoMinusDays(roshHashanahIso, 2); // stops 2 days before RH
+    return todayIso <= shofarEndIso;
+}
+
+function isSelichotActive(todayIso, cSecNow, dayW, isYomTov) {
+    if (!selichotStartIso || !yomKippurIso) return false;
+    if (dayW === 6 || isYomTov) return false; // never Shabbos or Yom Tov (incl. RH, YK)
+    let erevYkIso = getIsoMinusDays(yomKippurIso, 1);
+    if (todayIso < selichotStartIso || todayIso > erevYkIso) return false;
+    if (todayIso === selichotStartIso) {
+        let startEntry = schedule[todayIso];
+        if (!startEntry || !startEntry.z) return false;
+        return cSecNow >= getSec(startEntry.z[10], true); // begins once Shabbos ends (RT)
+    }
+    if (todayIso === erevYkIso) return cSecNow < 43200; // one-time noon cutoff
+    return true; // any day strictly between start and Erev YK
+}
+
 function fit(el, vhStart) {
     if (!el) return;
     let p = el.parentElement, vh = vhStart;
@@ -1710,9 +1817,22 @@ function updateUI() {
     let isShabForKL = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < (rtSecs - 1500));
     let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false));
     let klLine = showKL ? `<span id="status-kl"><span id="status-kl-text">קידוש לבנה</span></span>` : "";
+
+    // Elul season — stacks as extra pills alongside whatever the box is
+    // already showing, never replacing it. Independent of the priority
+    // chain above; each has its own active/inactive condition.
+    let todayIsoForSeason = getIso(now);
+    let seasonPills = [];
+    if (isLedavidActive(todayIsoForSeason, cSec)) seasonPills.push("לדוד ה' אורי");
+    if (isShofarActive(todayIsoForSeason, cSec, dayW)) seasonPills.push("שופר");
+    if (isSelichotActive(todayIsoForSeason, cSec, dayW, isYomTovStatus)) seasonPills.push("סליחות");
+    let seasonLine = seasonPills.length
+        ? `<div class="season-line">${seasonPills.map(p => `<span class="season-pill">${p}</span>`).join('')}</div>`
+        : "";
+
     let hasExtra = sub || showKL;
     let headSize = hasExtra ? 6.2 : 8.5;
-    let sH = `<div class="message-box ${cls}" style="justify-content:${hasExtra ? 'space-evenly' : 'center'}"><span id="status-head" style="font-size:${headSize}vh">${head}</span>${sub ? `<span id="status-sub">${sub}</span>` : ''}${klLine}</div>`;
+    let sH = `<div class="message-box ${cls}" style="justify-content:${hasExtra ? 'space-evenly' : 'center'}"><span id="status-head" style="font-size:${headSize}vh">${head}</span>${sub ? `<span id="status-sub">${sub}</span>` : ''}${klLine}${seasonLine}</div>`;
     if (sH !== currentStatusHTML) {
         EL['LEFT_MSG'].innerHTML = sH; currentStatusHTML = sH;
         fit(document.getElementById('status-head'), headSize);
@@ -1753,6 +1873,7 @@ function loadData() {
 
 function applyData(d) {
     schedule         = d.schedule;
+    computeSeasonDates();
     defaultSummerMsg = d.defaultMsg || "";
     tefilaOverride   = d.tefilaOverride || "";
     pdfZmanimList    = d.pdfZmanimList || [];
