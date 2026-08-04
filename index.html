@@ -1072,7 +1072,7 @@ function fitUnifiedStatusBox(container, vhStart) {
     let klText = container.querySelector('#status-kl-text');
     let pills = Array.from(container.querySelectorAll('.season-pill'));
     // .geshem-tal-demoted only exists when מוריד הגשם/הטל is paired with
-    // something specific (not the plain default) — sized like a pill.
+    // something specific (not the plain default) — sized like the sub-line.
     // When promoted, the text is folded directly into #status-head instead
     // and gets sized at the full unit automatically.
     let geshemTalDemoted = container.querySelector('.geshem-tal-demoted');
@@ -1082,7 +1082,7 @@ function fitUnifiedStatusBox(container, vhStart) {
         if (sub) sub.style.fontSize = (u * 0.65) + "vh";
         if (klText) klText.style.fontSize = (u * 0.55) + "vh";
         pills.forEach(p => p.style.fontSize = (u * 0.45) + "vh");
-        if (geshemTalDemoted) geshemTalDemoted.style.fontSize = (u * 0.45) + "vh";
+        if (geshemTalDemoted) geshemTalDemoted.style.fontSize = (u * 0.65) + "vh";
     }
 
     let unit = vhStart;
@@ -1930,8 +1930,12 @@ function updateUI() {
             // Other holiday text before RT
             head = hText; sub = tR; cls = "teal-box";
         } else if (tR !== "" && !isPastRTMinus25) {
-            // Tachanun override — disappears 25 min before RT
-            head = "אין אומרים תחנון"; sub = tR; cls = "teal-box";
+            // Tachanun override — disappears 25 min before RT. If tR is
+            // just the generic fallback (matched in the Reason tab but
+            // Column B was blank), don't repeat the same text as a sub-line.
+            head = "אין אומרים תחנון";
+            sub = (tR === "אין אומרים תחנון") ? "" : tR;
+            cls = "teal-box";
         } else {
             // Default
             let dYesterday = schedule[getIso(new Date(now.getTime() - 86400000))];
