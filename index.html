@@ -1595,13 +1595,37 @@ function updateUI() {
     } else { EL['SLEEP_OVERLAY'].style.display = 'none'; }
 
     const THREE_AM = 10800;
-    // RULE 5: Hebrew Date Flip - Friday at candlelighting, others at 3 AM
+    // RULE 5: Hebrew Date Flip
+    // - Chag to chag (today IS Yom Tov, tomorrow IS ALSO Yom Tov — e.g.
+    //   שמיני עצרת → שמחת תורה, or day 1 → day 2 of RH/Sukkot): flips
+    //   25 min before RT, checked FIRST so it applies regardless of day of
+    //   week (a Shabbos-that's-also-Yom-Tov transitioning into the next
+    //   Yom Tov day still uses RT, not the Friday candle-lighting rule).
+    // - Friday (not otherwise chag-to-chag): flip at candle lighting.
+    // - Erev Yom Tov on any other day (today NOT Yom Tov, tomorrow IS):
+    //   also flips at candle lighting, same as Erev Shabbos.
+    // - Otherwise: flip at 3 AM.
+    let tomorrowIsoForFlip = getIso(new Date(now.getTime() + 86400000));
+    let tomorrowDataForFlip = schedule[tomorrowIsoForFlip];
+    let tomorrowIsYomTovForFlip = tomorrowDataForFlip && tomorrowDataForFlip.yomtov === "Y";
+    let todayIsYomTovForFlip = dToday.yomtov === "Y";
+
     let dIso;
-    if (dayW === 5) {
+    if (tomorrowIsYomTovForFlip && todayIsYomTovForFlip) {
+        // Chag to chag — 25 min before RT
+        let rtSecsToday = getSec(dToday.z[10], true);
+        dIso = (cSec >= rtSecsToday - 1500) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
+    } else if (dayW === 5) {
         // Friday: flip at candle lighting
         let candleTime = (dToday.candle || "").trim();
         let candleSecs = candleTime ? getSec(candleTime, false) : 0;
         if (candleSecs < 43200) candleSecs += 43200; // Handle 12-hour format
+        dIso = (cSec >= candleSecs && candleSecs > 0) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
+    } else if (tomorrowIsYomTovForFlip && !todayIsYomTovForFlip) {
+        // Erev Yom Tov, any other day of the week: flip at candle lighting
+        let candleTime = (dToday.candle || "").trim();
+        let candleSecs = candleTime ? getSec(candleTime, false) : 0;
+        if (candleSecs < 43200) candleSecs += 43200;
         dIso = (cSec >= candleSecs && candleSecs > 0) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     } else {
         // Other days: flip at 3 AM
