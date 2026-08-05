@@ -2038,7 +2038,12 @@ function updateUI() {
             // Tomorrow is Yom Tov — show holiday with ותודיענו. No default
             // blessing here since tomorrow's davening is Yom Tov, not weekday.
             head = hText; sub = "ותודיענו"; cls = "teal-box";
-        } else if (hText !== "") {
+        } else if (hText !== "" && !hText.includes("מברכים")) {
+            // "שבת מברכים" is a Shabbos-specific announcement (blessing the
+            // new month) — it doesn't carry over once Shabbos has ended, so
+            // it's excluded here and falls through to plain "מוצאי שבת"
+            // below, unlike other holiday text (e.g. סוכות) which does
+            // meaningfully continue into the evening.
             if (hText.includes("ראש חודש")) {
                 head = hText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
             } else {
@@ -2132,7 +2137,7 @@ function updateUI() {
     // RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
     // Custom timer: Drops the Shabbat blocker 25 minutes (1500 seconds) before RT
     let isShabForKL = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < (rtSecs - 1500));
-    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false), getSec(dToday.z[9], true));
+    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false), getSec(dDate.z[9], true));
     let klLine = showKL ? `<span id="status-kl"><span id="status-kl-text">קידוש לבנה</span></span>` : "";
 
     // Elul season — stacks as extra pills alongside whatever the box is
