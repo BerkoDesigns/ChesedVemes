@@ -1984,9 +1984,15 @@ function updateUI() {
         }
     } else if (isMotz) {
         // RULE 22: "ותודיענו" - Only when Motzei Shabbat + Yom Tov tomorrow
-        // Use dIso as base (not raw now) so "tomorrow" is consistent with
-        // what the board considers today — fixes midnight-to-3AM window.
-        let dNextDay = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
+        // "Tomorrow" needs its OWN base here — separate from dIso — since
+        // dIso can already be flipped ahead by the chag-to-chag rule (e.g.
+        // Shabbos-that's-also-Shmini-Atzeret past RT already points dIso at
+        // Simchat Torah), which would make "tomorrow" wrongly skip past the
+        // actual next day. Only correct for the Sunday-before-3AM overlap
+        // (still conceptually "Motzei Shabbat", so treat as if it's still
+        // Saturday) — the plain civil day otherwise.
+        let motzBaseIso = (dayW === 0 && cSec < THREE_AM) ? getIso(new Date(now.getTime() - 86400000)) : getIso(now);
+        let dNextDay = schedule[getIso(new Date(new Date(motzBaseIso + 'T00:00:00').getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (nextDayIsYomTov && hText) {
