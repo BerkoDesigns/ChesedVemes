@@ -1888,7 +1888,7 @@ function updateUI() {
     // Bayswater): the evening before a hardcoded no-Tachanun day, from 15
     // min before Shkiah, Tachanun is also not said at Mincha tonight.
     if (!tR) {
-        let tomorrowIso = getIso(new Date(new Date(dIso).getTime() + 86400000));
+        let tomorrowIso = getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000));
         let tomorrowHeb = (schedule[tomorrowIso] || {}).heb || "";
         if (isChesedVemesNoTachanunDay(tomorrowHeb, tomorrowIso)) {
             let shkiaSec = getSec(dToday.z[9], true);
@@ -1986,7 +1986,7 @@ function updateUI() {
         // RULE 22: "ותודיענו" - Only when Motzei Shabbat + Yom Tov tomorrow
         // Use dIso as base (not raw now) so "tomorrow" is consistent with
         // what the board considers today — fixes midnight-to-3AM window.
-        let dNextDay = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
+        let dNextDay = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (nextDayIsYomTov && hText) {
@@ -2005,7 +2005,7 @@ function updateUI() {
             showDefaultBlessingExtra = true;
         }
     } else if (isYomTovStatus) {
-        let dNextDay = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
+        let dNextDay = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
         
         if (!nextDayIsYomTov && isPastRT) {
@@ -2030,7 +2030,7 @@ function updateUI() {
         // Check if tomorrow is Rosh Chodesh (handles erev RC and 2-day RC)
         // Use dIso as base (not raw now) so midnight-to-3AM window correctly
         // sees the next calendar day as "tomorrow" rather than skipping a day.
-        let dTomorrow    = schedule[getIso(new Date(new Date(dIso).getTime() + 86400000))];
+        let dTomorrow    = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
         let tomorrowIsRC = dTomorrow && (dTomorrow.holidayText || "").includes("ראש חודש");
         // Dropped the old "&& !onRCDay" guard: today-is-RC AND tomorrow-is-RC
         // can only mean today is day 1 of a 2-day RC (RC is never 3+ days),
