@@ -2038,12 +2038,12 @@ function updateUI() {
             // Tomorrow is Yom Tov — show holiday with ותודיענו. No default
             // blessing here since tomorrow's davening is Yom Tov, not weekday.
             head = hText; sub = "ותודיענו"; cls = "teal-box";
-        } else if (hText !== "" && !hText.includes("מברכים")) {
-            // "שבת מברכים" is a Shabbos-specific announcement (blessing the
-            // new month) — it doesn't carry over once Shabbos has ended, so
-            // it's excluded here and falls through to plain "מוצאי שבת"
-            // below, unlike other holiday text (e.g. סוכות) which does
-            // meaningfully continue into the evening.
+        } else if (hText !== "" && !hText.trim().startsWith("שבת")) {
+            // Any "שבת X" label (מברכים, שובה, חזון, נחמו, הגדול, ראש חודש,
+            // etc.) is a Shabbos-specific name that doesn't carry over once
+            // Shabbos has ended, so it's excluded here and falls through to
+            // plain "מוצאי שבת" below — unlike other holiday text (e.g.
+            // סוכות) which does meaningfully continue into the evening.
             if (hText.includes("ראש חודש")) {
                 head = hText; sub = "הלל, יעלה ויבא"; cls = "teal-box";
             } else {
