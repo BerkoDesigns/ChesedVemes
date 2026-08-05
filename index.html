@@ -2057,7 +2057,11 @@ function updateUI() {
             head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
             showDefaultBlessingExtra = true;
         } else {
-            head = hText || "יום טוב"; sub = tR; cls = "teal-box";
+            // No sub-text on Yom Tov itself — Tachanun is never relevant
+            // (it's simply never said), so any tR value (e.g. from the
+            // Mincha-eve extension seeing tomorrow needs it) is redundant
+            // noise here and gets dropped rather than shown.
+            head = hText || "יום טוב"; sub = ""; cls = "teal-box";
         }
     } else {
         // RULE 14 — Rosh Chodesh: starts RT-25min the evening before, ends RT-25min on last day
