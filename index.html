@@ -1921,14 +1921,18 @@ function updateUI() {
         tR = "אין אומרים תחנון";
     }
     // Mincha-eve extension (Chesed V'Emes says Tachanun at Mincha, unlike
-    // Bayswater): the evening before a hardcoded no-Tachanun day, from 15
-    // min before Shkiah, Tachanun is also not said at Mincha tonight.
+    // Bayswater): the evening before a day with no Tachanun — either one of
+    // the hardcoded no-Tachanun days, OR Rosh Chodesh (checked separately
+    // via tomorrow's holidayText, since RC isn't part of the hardcoded
+    // list) — Tachanun is also not said at Mincha tonight, starting 30 min
+    // before Shkiah.
     if (!tR) {
         let tomorrowIso = getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000));
         let tomorrowHeb = (schedule[tomorrowIso] || {}).heb || "";
-        if (isChesedVemesNoTachanunDay(tomorrowHeb, tomorrowIso)) {
+        let tomorrowIsRC = ((schedule[tomorrowIso] || {}).holidayText || "").includes("ראש חודש");
+        if (isChesedVemesNoTachanunDay(tomorrowHeb, tomorrowIso) || tomorrowIsRC) {
             let shkiaSec = getSec(dToday.z[9], true);
-            if (cSec >= shkiaSec - 900) tR = "אין אומרים תחנון"; // 15 min before Shkiah
+            if (cSec >= shkiaSec - 1800) tR = "אין אומרים תחנון"; // 30 min before Shkiah
         }
     }
 
