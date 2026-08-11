@@ -1570,7 +1570,7 @@ function loadWeather() {
 // disappears entirely when its toggle is off. Manual overrides (set via
 // the Manager app) replace the computed value for שחרית or מנחה-מעריב
 // when today falls inside an override's date range.
-function renderTefilaBox(now, dayW, holidayText) {
+function renderTefilaBox(now, dayW, holidayText, cSec, rochCutoff) {
     if (!EL['ZMANIM_TEFILA']) return;
 
     // שחרית (יום א') — always its own fixed time, untouched by the
@@ -1578,16 +1578,20 @@ function renderTefilaBox(now, dayW, holidayText) {
     let shSunSec = parse24ToSec(shacharisSunday);
 
     // Regular שחרית line — swaps label+time to Rosh Chodesh/Chol HaMoed from
-    // erev (tomorrow is RC/CHM) through midday of the day itself (today is
-    // RC/CHM and before noon). "Tomorrow is still special" keeps the window
-    // open on its own through multi-day Chol HaMoed / 2-day Rosh Chodesh.
+    // the same evening-before boundary the "אין אומרים תחנון" head display
+    // already uses (rochCutoff, 25 min before RT) through midday of the day
+    // itself (today is RC/CHM and before noon). Previously "tomorrow is
+    // RC/CHM" had no time gate at all, so it triggered at midnight — many
+    // hours before it's actually relevant, showing next-day's Shacharis
+    // info all morning/afternoon on what's still an ordinary weekday.
+    // "Tomorrow is still special" keeps the window open on its own through
+    // multi-day Chol HaMoed / 2-day Rosh Chodesh.
     let tomorrow     = new Date(now.getTime() + 86400000);
     let tomorrowText = (schedule[getIso(tomorrow)] || {}).holidayText || "";
-    let cSecNow  = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
-    let isBeforeMidday = cSecNow < 43200;
+    let isBeforeMidday = cSec < 43200;
 
-    let tomorrowIsRC  = tomorrowText.includes("ראש חודש");
-    let tomorrowIsCHM = tomorrowText.includes("חול המועד");
+    let tomorrowIsRC  = tomorrowText.includes("ראש חודש") && cSec >= rochCutoff;
+    let tomorrowIsCHM = tomorrowText.includes("חול המועד") && cSec >= rochCutoff;
     let todayIsRC     = holidayText.includes("ראש חודש");
     let todayIsCHM    = holidayText.includes("חול המועד");
 
@@ -1835,7 +1839,7 @@ function updateUI() {
     // זמנים התפילה בימי חול — the always-visible davening box, entirely
     // separate from this sorted list (see renderTefilaBox below). Not
     // day-gated, no live highlighting, rendered independently.
-    renderTefilaBox(now, dayW, holidayText);
+    renderTefilaBox(now, dayW, holidayText, cSec, rtSecs - 1500);
 
     // רבינו תם — always from the Zemanim sheet now (PDF override removed
     // per request); rtSecs (Shabbos boundary/flip logic used throughout
