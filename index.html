@@ -2528,7 +2528,11 @@ function applyData(d) {
     if (!annText) annText = d.annDefault || ""; // empty — always fall back to default
     EL['ANN'].innerText = annText; fit(EL['ANN'], 4.8);
 
-    let hebMonth = getHebMonth(schedule[getIso(new Date())]?.heb || "");
+    // FIX: was using schedule[getIso(new Date())] — the plain unflipped
+    // civil date, which only advances at civil midnight. dDate is the
+    // same RT-aware flipped date already driving the head/status box
+    // correctly, matching the backend's own RT-based donor-row fix.
+    let hebMonth = getHebMonth(dDate.heb || "");
     renderDonors('NER_BODY',    'NER_TITLE',    d.nerDonors    || [], hebMonth);
     renderDonors('COFFEE_BODY', 'COFFEE_TITLE', d.coffeeDonors || [], hebMonth);
 
