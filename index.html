@@ -139,6 +139,9 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     text-align: center; padding: 4px 10px;
+    gap: 1.0vh; /* uniform spacing between every block AND divider —
+                   replaces space-evenly, which treated dividers as their
+                   own flex items and compounded into uneven-looking gaps */
   }
   .teal-box { background: #A8D5CC; color: #000; }
   .gold-box  { color: var(--gold-dark); background: var(--box); }
@@ -1743,8 +1746,13 @@ function updateUI() {
         if (candleSecs < 43200) candleSecs += 43200;
         dIso = (cSec >= candleSecs && candleSecs > 0) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     } else {
-        // Other days: flip at 3 AM
-        dIso = (cSec < THREE_AM) ? getIso(new Date(now.getTime() - 86400000)) : getIso(now);
+        // Ordinary weekday: the Hebrew day itself changes at RT (72 min),
+        // not at a fixed 3 AM cutoff — flips forward the evening before,
+        // same as every other RT-based boundary already used elsewhere.
+        // Replaces the old fixed-3AM fallback, which never flipped forward
+        // early and instead just picked an arbitrary dawn-ish cutoff.
+        let rtSecsToday = getSec(dToday.z[10], true);
+        dIso = (cSec >= rtSecsToday) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     }
     let dDate = schedule[dIso] || dToday;
 
@@ -2006,7 +2014,10 @@ function updateUI() {
     // list) — Tachanun is also not said at Mincha tonight, starting 30 min
     // before Shkiah.
     if (!tR) {
-        let tomorrowIso = getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000));
+        // FIX: "tomorrow" here must be relative to the REAL civil date
+        // (now), not dIso — see the identical fix + explanation in the RC
+        // block below, same root cause.
+        let tomorrowIso = getIso(new Date(now.getTime() + 86400000));
         let tomorrowHeb = (schedule[tomorrowIso] || {}).heb || "";
         let tomorrowIsRC = ((schedule[tomorrowIso] || {}).holidayText || "").includes("ראש חודש");
         if (isChesedVemesNoTachanunDay(tomorrowHeb, tomorrowIso) || tomorrowIsRC) {
@@ -2208,9 +2219,18 @@ function updateUI() {
         let rcHeadText = todayIsRC ? hText : (dToday.holidayText || "ראש חודש");
 
         // Check if tomorrow is Rosh Chodesh (handles erev RC and 2-day RC)
-        // Use dIso as base (not raw now) so midnight-to-3AM window correctly
-        // sees the next calendar day as "tomorrow" rather than skipping a day.
-        let dTomorrow    = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
+        // FIX: must be relative to the REAL civil date (now), not dIso.
+        // Before item 3's fix, dIso never flipped forward early on
+        // ordinary days, so dIso+1 was always safe. Now that dIso DOES
+        // flip forward at RT, using dIso+1 here double-counted the flip:
+        // once RT passed, dIso already equaled tomorrow, so dIso+1
+        // overshot to the day after — breaking isErevRC for the entire
+        // RT-to-midnight window every single night. Using now+1 always
+        // means "the actual next calendar day," regardless of whether
+        // dIso has already flipped, which also makes this self-sufficient
+        // for the whole evening without needing to hand off to anything
+        // else once RT passes.
+        let dTomorrow    = schedule[getIso(new Date(now.getTime() + 86400000))];
         let tomorrowIsRC = dTomorrow && (dTomorrow.holidayText || "").includes("ראש חודש");
         // Dropped the old "&& !onRCDay" guard: today-is-RC AND tomorrow-is-RC
         // can only mean today is day 1 of a 2-day RC (RC is never 3+ days),
@@ -2302,6 +2322,16 @@ function updateUI() {
     if (hoshanaText) seasonPills.push(hoshanaText);
     let alHanissimText = getAlHanissimText(todayIsoForSeason, cSec, 1500); // Chesed V'Emes: 25 min before RT
     if (alHanissimText) seasonPills.push(alHanissimText);
+    // עשי"ת — first night of Rosh Hashana through the end of Yom Kippur.
+    // Uses statusIso (the flipped logical day), not todayIsoForSeason —
+    // RH's own Yom-Tov flip already correctly shows RH starting the
+    // evening before, and YK's own exit (RT-based, see the dIso
+    // else-branch) ends this range right at YK's own RT — no separate
+    // evening-trigger needed for either boundary. המלך הקדוש every day of
+    // the period, including Shabbos/Yom Tov; המלך המשפט weekdays only.
+    let inAseresYemeiTeshuva = roshHashanahIso && yomKippurIso && statusIso >= roshHashanahIso && statusIso <= yomKippurIso;
+    if (inAseresYemeiTeshuva) seasonPills.push("המלך הקדוש");
+    if (inAseresYemeiTeshuva && !isShab && !isYomTovStatus) seasonPills.push("המלך המשפט");
     let seasonLine = seasonPills.length
         ? `<div class="season-line">${seasonPills.map(p => `<span class="season-pill">${p}</span>`).join('')}</div>`
         : "";
@@ -2352,7 +2382,10 @@ function updateUI() {
     if (demotedGeshemLine) statusBlocks.push(demotedGeshemLine);
     if (defaultBlessingLine) statusBlocks.push(defaultBlessingLine);
     let textSep = '<div class="text-sep"></div>';
-    let sH = `<div class="message-box ${cls}" style="justify-content:${hasExtra ? 'space-evenly' : 'center'}">${statusBlocks.join(textSep)}</div>`;
+    // Always centered with a uniform gap now (CSS handles it) — no more
+    // space-evenly, which stretched dividers+blocks unevenly across the
+    // box's full height as separate flex items.
+    let sH = `<div class="message-box ${cls}">${statusBlocks.join(textSep)}</div>`;
     if (sH !== currentStatusHTML) {
         EL['LEFT_MSG'].innerHTML = sH; currentStatusHTML = sH;
         let msgBoxEl = EL['LEFT_MSG'].querySelector('.message-box');
