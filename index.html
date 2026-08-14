@@ -629,6 +629,7 @@ var defaultSummerMsg = "", tefilaOverride = "";
 var shabbosPics = [], shabbosRotationEnabled = false, shabbosIndex = 0, shabbosRotateTimer = null;
 var resolvedFallbackId = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
+var currentDDate = null; // exposes updateUI()'s flipped-date object to other functions (e.g. applyData) that don't have it in local scope
 // Elul season (לדוד ה' אורי / שופר / סליחות) — reference dates computed once
 // per data load by computeSeasonDates(), not recalculated every second.
 var elulTriggerDayIso = null;   // 1 Elul (day 2 of the 2-day Rosh Chodesh)
@@ -1755,6 +1756,7 @@ function updateUI() {
         dIso = (cSec >= rtSecsToday) ? getIso(new Date(now.getTime() + 86400000)) : getIso(now);
     }
     let dDate = schedule[dIso] || dToday;
+    currentDDate = dDate; // expose to applyData() and anything else outside updateUI()'s own scope
 
     // PDF ZMANIM OVERRIDE — looked up once per cycle using dIso (the
     // same date the zmanim list itself is built from). null if no
@@ -2532,7 +2534,16 @@ function applyData(d) {
     // civil date, which only advances at civil midnight. dDate is the
     // same RT-aware flipped date already driving the head/status box
     // correctly, matching the backend's own RT-based donor-row fix.
-    let hebMonth = getHebMonth(dDate.heb || "");
+    // FIX: was `dDate.heb` — dDate is a LOCAL variable inside updateUI(),
+    // not in scope here inside applyData() at all. That was a hard
+    // ReferenceError that threw immediately and halted the rest of this
+    // function — donor boxes never got past their initial "טוען..."
+    // placeholder because renderDonors() below never ran. currentDDate is
+    // the same object, exposed globally by updateUI() each time it runs.
+    // Falls back to "" safely if applyData() happens to run before
+    // updateUI() ever has (first load) — momentarily shows no month
+    // suffix rather than crashing, self-corrects within a second.
+    let hebMonth = getHebMonth((currentDDate && currentDDate.heb) || "");
     renderDonors('NER_BODY',    'NER_TITLE',    d.nerDonors    || [], hebMonth);
     renderDonors('COFFEE_BODY', 'COFFEE_TITLE', d.coffeeDonors || [], hebMonth);
 
