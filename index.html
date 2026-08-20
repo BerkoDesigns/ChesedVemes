@@ -145,13 +145,18 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   /* Elul season lines (לדוד ה' אורי / שופר / סליחות) — Option A: compact pills */
   .season-line { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
   .season-pill {
-    font-size: 2.6vh;
+    font-size: 2.6vh; line-height: 1.0;
     background: #ffffffaa; border: 1px solid var(--gold-dark); color: var(--gold-dark);
-    border-radius: 20px; padding: 2px 10px;
+    border-radius: 20px; padding: 1px 8px;
   }
   #status-head { font-size: 6.2vh; line-height: 1.0; display: block; width: 100%; }
   #status-sub  { font-size: 3.2vh; color: #000; display: block; width: 100%; white-space: normal; line-height: 1.0; }
   .geshem-tal-text { color: #000; display: block; width: 100%; white-space: normal; line-height: 1.0; }
+  /* Pure color, no display/width — safe to nest inline (e.g. inside
+     .head-sub-merged). .geshem-tal-text itself is display:block/width:100%
+     for its own standalone use, so reusing it inline breaks the line it's
+     nested in — this is the fix for exactly that mistake. */
+  .force-black { color: #000; }
   .default-blessing-demoted { color: #000; display: block; width: 100%; white-space: normal; line-height: 1.0; }
   .teal-accent { color: #1a5c52; }
   /* Short vertical mark for a mid-line separator (e.g. geshem/tal combined
@@ -161,11 +166,17 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
      shared font-size grows, rather than stretching to full text height
      like a plain "│" character would. */
   .mid-divider { font-size: 0.55em; vertical-align: middle; margin: 0 0.3em; color: inherit; }
-  .text-sep { width: 55%; height: 1px; background: rgba(0,0,0,0.28); margin: 1px 0; flex-shrink: 0; }
+  /* Merged head+sub line — used only once the box has more than 3 blocks,
+     so head and sub share one line instead of two, saving a row on busy
+     days. Deliberately NOT display:block on the individual head/sub text
+     (that would force them apart again) — the outer span is the block,
+     the two texts inside flow inline separated by the short mid-divider. */
+  .head-sub-merged { display: block; width: 100%; line-height: 1.0; }
+  .text-sep { width: 55%; height: 1px; background: rgba(0,0,0,0.28); margin: 0; flex-shrink: 0; }
   #status-kl {
     background: #c0392b; border: 1px solid var(--gold-dark); color: #ffffff;
-    border-radius: 20px; padding: 2px 10px;
-    display: inline-block; margin-top: 4px;
+    border-radius: 20px; padding: 1px 8px; line-height: 1.0;
+    display: inline-block; margin-top: 2px;
   }
 
   /* ── MAIN BODY ───────────────────────────────────────────────── */
@@ -1321,7 +1332,7 @@ function fitGroupInBox(els, container, vhStart) {
 // Checks every individual block's own bounding box against the container,
 // not just aggregate scrollHeight — catches horizontal overflow (e.g. a
 // wrapped pill bleeding past the edge) that scrollHeight alone would miss.
-function fitStatusBoxToFill(container) {
+function fitStatusBoxToFill(container, visualRowCount) {
     if (!container) return;
     // Wait for webfonts to actually be ready before measuring — if
     // 'Suez One'/'Assistant' haven't finished loading yet, measuring
@@ -1331,7 +1342,7 @@ function fitStatusBoxToFill(container) {
     document.fonts.ready.then(() => {
     // KL badge is now a single element (matches the pills), so one
     // selector covers both text-sizing and containment checks.
-    const SEL = '#status-head, [id="status-sub"], .season-pill, #status-kl, .geshem-tal-demoted, .default-blessing-demoted';
+    const SEL = '#status-head, [id="status-sub"], .season-pill, #status-kl, .geshem-tal-demoted, .default-blessing-demoted, .head-sub-merged';
     let textEls = Array.from(container.querySelectorAll(SEL));
     if (!textEls.length) return;
 
@@ -1358,10 +1369,15 @@ function fitStatusBoxToFill(container) {
         return true;
     }
 
-    // 6.0vh ceiling — sparse days (e.g. just head+sub) still grow with
-    // available room, but stop short of filling the whole box; the cap
-    // has no effect on busier days, which already need less than this.
-    let lo = 1.0, hi = 6.0, best = lo;
+    // 8.0vh ceiling ONLY for the 2-line case (e.g. just head+sub) — that's
+    // the one scenario where filling 100% of the box looked disproportion-
+    // ately huge. Everything else (3+ visual lines, including the merged
+    // head+sub case which is always 3+ underneath) searches freely up to
+    // a generous ceiling so it actually fills the available space, rather
+    // than being held back by a cap that was only ever meant for the
+    // sparsest case.
+    let isSparse = (visualRowCount || 0) <= 2;
+    let lo = 1.0, hi = isSparse ? 8.0 : 14.0, best = lo;
     for (let i = 0; i < 20; i++) {
         let mid = (lo + hi) / 2;
         applySize(mid);
@@ -2493,10 +2509,42 @@ function updateUI() {
     // is a single centralized replace rather than touching every place
     // `head`/displayHead gets built, so it catches all of them uniformly.
     let displayHeadColored = displayHead.replace(/חנוכה/g, '<span class="teal-accent">חנוכה</span>');
+    // When geshem/tal is promoted to the headline (the common "מוריד הטל /
+    // ותן ברכה" pairing), force it black — matches the demoted version's
+    // existing color (.geshem-tal-text) rather than inheriting whatever
+    // color the box theme happens to use. The paired "ותן ברכה" line is
+    // already black via #status-sub's own CSS; this makes the head half
+    // match it too.
+    if (geshemPromoted) {
+        displayHeadColored = `<span class="force-black">${displayHeadColored}</span>`;
+    }
+
+    // Once the box has more than 3 blocks, merge head with whichever
+    // "second line" text is actually present — either `sub`, OR
+    // `demotedDefaultLine`'s plain text (the geshem-promoted case, e.g.
+    // "מוריד הטל" / "ותן ברכה" — these two are mutually exclusive, never
+    // both set at once). Missing the demotedDefaultLine case here was a
+    // real bug: it's the MORE common of the two on ordinary days, and
+    // exactly the pairing the original request was based on.
+    let secondLineText = sub || (demotedDefaultLine ? head : "");
+    let wouldBeCount = 1; // head
+    if (secondLineText) wouldBeCount++;
+    if (klLine) wouldBeCount++;
+    if (seasonLine) wouldBeCount++;
+    if (demotedGeshemLine) wouldBeCount++;
+    if (defaultBlessingLine) wouldBeCount++;
+    if (tzidkatchaLine) wouldBeCount++;
+    let mergeHeadSub = wouldBeCount > 3 && !!secondLineText;
+
     let statusBlocks = [];
-    statusBlocks.push(`<span id="status-head">${displayHeadColored}</span>`);
-    if (demotedDefaultLine) statusBlocks.push(demotedDefaultLine);
-    if (sub) statusBlocks.push(`<span id="status-sub">${sub}</span>`);
+    if (mergeHeadSub) {
+        let secondLineColored = geshemPromoted ? `<span class="force-black">${secondLineText}</span>` : secondLineText;
+        statusBlocks.push(`<span class="head-sub-merged">${displayHeadColored}<span class="mid-divider">│</span>${secondLineColored}</span>`);
+    } else {
+        statusBlocks.push(`<span id="status-head">${displayHeadColored}</span>`);
+        if (demotedDefaultLine) statusBlocks.push(demotedDefaultLine);
+        if (sub) statusBlocks.push(`<span id="status-sub">${sub}</span>`);
+    }
     if (klLine) statusBlocks.push(klLine);
     if (seasonLine) statusBlocks.push(seasonLine);
     if (demotedGeshemLine) statusBlocks.push(demotedGeshemLine);
@@ -2509,7 +2557,8 @@ function updateUI() {
     if (sH !== currentStatusHTML) {
         EL['LEFT_MSG'].innerHTML = sH; currentStatusHTML = sH;
         let msgBoxEl = EL['LEFT_MSG'].querySelector('.message-box');
-        if (msgBoxEl) fitStatusBoxToFill(msgBoxEl);
+        let visualRowCount = mergeHeadSub ? wouldBeCount - 1 : wouldBeCount;
+        if (msgBoxEl) fitStatusBoxToFill(msgBoxEl, visualRowCount);
     }
 }
 
