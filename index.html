@@ -1502,7 +1502,7 @@ function parseMoladEntry(str) {
 }
 
 // ── KIDDUSH LEVANA ────────────────────────────────────────────────
-function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek, cSec, alosSec, shkiaSec) {
+function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek, cSec, alosSec, rtSec) {
     if (isShab) return false;
     if (holidayText && holidayText.trim() !== "" && !holidayText.includes("תשעה באב") && !holidayText.includes("יום כיפור")) return false;
     if (dayOfWeek === 5) return false;
@@ -1513,14 +1513,17 @@ function getKiddushLevana(now, hebDate, isShab, holidayText, dayOfWeek, cSec, al
         if (cSec < alosSec) return false;
     }
     // Custom: never show Kiddush Levana anywhere in Tishrei until Yom Kippur
-    // afternoon — mirrors the Nine Days/Tisha B'Av pattern above. 1-9 Tishrei
-    // are fully blocked regardless of the Molad-timing window below; Yom
-    // Kippur itself (10 Tishrei) opens back up at Shkiah, not from midnight.
+    // — mirrors the Nine Days/Tisha B'Av pattern above. 1-9 Tishrei are
+    // fully blocked regardless of the Molad-timing window below; Yom
+    // Kippur itself (10 Tishrei) opens 25 min before Rabbeinu Tam, not at
+    // Shkiah — corrected per explicit instruction (this is the ONLY Yom
+    // Tov KL is ever shown on at all, per the exclusion above, and even
+    // then only from this specific point onward).
     if (hebDate.includes("תשרי")) {
         let tishreiDay = extractHebDay(hebDate);
         if (tishreiDay >= 1 && tishreiDay <= 10) {
             if (tishreiDay === 10) {
-                if (cSec < shkiaSec) return false;
+                if (cSec < rtSec - 1500) return false;
             } else {
                 return false;
             }
@@ -2033,9 +2036,23 @@ function updateUI() {
     if (EL['ZMANIM_LIST']) EL['ZMANIM_LIST'].style.flex = zRows.length;
 
     // Find next upcoming zman for highlight
+    // REAL BUG, found while auditing every dDate-vs-cSec comparison after
+    // the Kiddush Levana fix: whenever dIso has already flipped ahead of
+    // today's real civil date (past RT — every single night, not just
+    // holiday transitions), zRows holds TOMORROW's zmanim while `cSec` is
+    // still tonight's real clock, so every early-AM value read as
+    // "already passed" and nothing ever got highlighted. Once flipped,
+    // tonight's real clock is conceptually "before dawn" of the new
+    // Hebrew day, so its first (chronologically earliest) zman is
+    // correctly the "next/active" one regardless of the literal clock
+    // reading.
     let nextId = null;
-    for (let z of zRows) {
-        if (z.secVal > cSec && z.secVal > 0) { nextId = z.id; break; }
+    if (dIso !== getIso(now)) {
+        nextId = zRows.length ? zRows[0].id : null;
+    } else {
+        for (let z of zRows) {
+            if (z.secVal > cSec && z.secVal > 0) { nextId = z.id; break; }
+        }
     }
 
     // Render — only rebuild DOM if day changed or highlight changed
@@ -2474,7 +2491,7 @@ function updateUI() {
     // RULE 16: Kiddush Levana - 3-15 days after Molad, NOT Shabbat/Fri/9 Days
     // Custom timer: Drops the Shabbat blocker 25 minutes (1500 seconds) before RT
     let isShabForKL = (dayW===5 && candleTime && cSec >= candleSecs) || (dayW===6 && cSec < (rtSecs - 1500));
-    let showKL = getKiddushLevana(now, dDate.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false), getSec(dDate.z[9], true));
+    let showKL = getKiddushLevana(now, dToday.heb || "", isShabForKL, hText, dayW, cSec, getSec(dToday.z[0], false), getSec(dToday.z[10], true));
     let klLine = showKL ? `<span id="status-kl">קידוש לבנה</span>` : "";
 
     // Elul season — stacks as extra pills alongside whatever the box is
