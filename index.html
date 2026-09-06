@@ -643,7 +643,7 @@ var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentSta
 // "YYYY-MM-DD" date whose 1-5 AM night-mode blackout should be skipped,
 // or "" if no override is active. Populated from the fetched data in
 // applyData() and consulted by RULE 2 in updateUI().
-var nightModeOverrideDate = "";
+var nightModeOverride = false;
 var currentDDate = null; // exposes updateUI()'s flipped-date object to other functions (e.g. applyData) that don't have it in local scope
 // Elul season (לדוד ה' אורי / שופר / סליחות) — reference dates computed once
 // per data load by computeSeasonDates(), not recalculated every second.
@@ -1838,11 +1838,13 @@ function updateUI() {
     }
 
     // RULE 2: Night Mode - 1-5 AM (except Shavuot, except active override)
-    // nightModeOverrideDate holds a single "YYYY-MM-DD" date (set from the
-    // admin panel's "Disable Tonight" button, via nightModeOverride in the
-    // fetched data) whose blackout window should be skipped entirely.
-    let nightModeSuppressed = !!nightModeOverrideDate && nightModeOverrideDate === getIso(now);
-    if (!isHolidayStayAwake && !nightModeSuppressed && h >= 1 && h < 5) {
+    // Simple TRUE/FALSE sticky switch (nightModeOverride, set via the
+    // admin panel for holidays/events/late-night programs) — stays
+    // whichever way it's set until manually changed again. Matches Kahal
+    // Chassidim's board exactly; changed from an earlier self-expiring
+    // "YYYY-MM-DD" date version after Kahal Chassidim's simple switch was
+    // confirmed working flawlessly in practice.
+    if (!isHolidayStayAwake && !nightModeOverride && h >= 1 && h < 5) {
         EL['SLEEP_OVERLAY'].style.display = 'block';
         EL['SLEEP_CLOCK'].innerText = (h%12||12) + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
         if (s === 0) {
@@ -2771,7 +2773,7 @@ function applyData(d) {
     }
 
     // ── NIGHT MODE OVERRIDE ────────────────────────────────────────
-    nightModeOverrideDate = d.nightModeOverride || "";
+    nightModeOverride = d.nightModeOverride === true;
 
     // ── IMAGE ROTATION SETUP ──────────────────────────────────────
     p1Images      = d.p1List      || [];
