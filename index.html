@@ -1834,7 +1834,7 @@ function updateUI() {
     }
 
     // RULE 2: Night Mode - 1-5 AM (except Shavuot)
-    if (!isHolidayStayAwake && h >= 1 && h < 5) {
+    if (!isHolidayStayAwake && h >= 2 && h < 5) {
         EL['SLEEP_OVERLAY'].style.display = 'block';
         EL['SLEEP_CLOCK'].innerText = (h%12||12) + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
         if (s === 0) {
