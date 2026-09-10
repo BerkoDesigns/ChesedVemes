@@ -1411,34 +1411,6 @@ function fitStatusBoxToFill(container, visualRowCount) {
 // rarely needs it anyway, since the existing shrink-loop already
 // handles genuinely long content). Verified visually across a range of
 // realistic entry lengths before shipping.
-// Handles the U+0001 color markers the email parser (RabbiEmailParser.gs)
-// wraps around intentionally-colored text (e.g. a red sign-off line),
-// added there since the parser strips out all other HTML/styling.
-//
-// stripColorMarkers: removes the markers but keeps the plain text —
-// used for the header (parsha name), which has its own styling already
-// and doesn't need/want the color feature, and would otherwise show the
-// raw marker characters as visible junk since the header renders as
-// plain text, not HTML.
-function stripColorMarkers(text) {
-    if (!text) return text;
-    return text.replace(/\u0001C\d+,\d+,\d+\u0001/g, "").replace(/\u0001\/C\u0001/g, "");
-}
-
-// renderRabbiCornerHTML: converts the markers into real, safely-escaped
-// HTML <span> tags — used for the main body text, which DOES get the
-// color treatment. HTML-escapes the text FIRST (so any literal <, >, &
-// in the actual content can never be misread as markup once this
-// becomes innerHTML), THEN converts the markers (which were never real
-// HTML and so passed through the escaping untouched) into real spans.
-function renderRabbiCornerHTML(text) {
-    if (!text) return "";
-    let escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    escaped = escaped.replace(/\u0001C(\d+),(\d+),(\d+)\u0001([\s\S]*?)\u0001\/C\u0001/g,
-        (match, r, g, b, inner) => `<span style="color: rgb(${r},${g},${b})">${inner}</span>`);
-    return escaped.replace(/\n/g, "<br>");
-}
-
 function rabbiCornerVhMax(textLength) {
     const vhMax = 9.5 - (textLength / 60);
     return Math.max(5.5, Math.min(9.5, vhMax));
@@ -2788,8 +2760,8 @@ function applyData(d) {
                 rabbiBody.classList.add("dvar-torah");
                 if (bodyText !== lastRabbiText) {
                     lastRabbiText = bodyText;
-                    rabbiEl.innerHTML = renderRabbiCornerHTML(bodyText);
-                    headerEl.innerText = "דבר תורה · " + stripColorMarkers(parshaName);
+                    rabbiEl.innerText  = bodyText;
+                    headerEl.innerText = "דבר תורה · " + parshaName;
                     rabbiEl.style.fontSize = "";  // clear any previous size
                     setTimeout(() => fitExpand(rabbiEl, 3.5, rabbiCornerVhMax(bodyText.length)), 200);
                 }
@@ -2797,7 +2769,7 @@ function applyData(d) {
                 rabbiBody.classList.remove("dvar-torah");
                 if (tefilaOverride !== lastRabbiText) {
                     lastRabbiText = tefilaOverride;
-                    rabbiEl.innerHTML = renderRabbiCornerHTML(tefilaOverride.trim());
+                    rabbiEl.innerText  = tefilaOverride.trim();
                     headerEl.innerText = "הלכה יומית";
                     rabbiEl.style.fontSize = "";
                     setTimeout(() => fitExpand(rabbiEl, 3.5, rabbiCornerVhMax(tefilaOverride.trim().length)), 200);
