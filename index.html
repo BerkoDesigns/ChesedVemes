@@ -2820,15 +2820,21 @@ function applyData(d) {
     imageExpiryMap = d.imageExpiryMap || {};
     resolvedFallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
 
-    // Handle image expiry — if expired, override activeImageId with fallback
+    // Handle image expiry — if expired, override activeImageId with
+    // fallback ONLY. This must never touch p1Images/p1Rotation — those
+    // belong to the separate, per-image expiry system (imageExpiryMap +
+    // the scheduled cleanup that actually deletes expired files from
+    // the rotation folder). REAL BUG FIXED HERE: this used to also wipe
+    // the entire p1Images rotation and force p1Rotation off whenever
+    // this single, unrelated field expired — so one image (tracked here)
+    // expiring could collapse the whole multi-image rotation down to
+    // just the fallback, even though the other images in rotation were
+    // still perfectly valid.
     const fallbackId = resolvedFallbackId;
     if (d.imageExpiry) {
         const expiry = new Date(String(d.imageExpiry).replace(' ', 'T'));
         if (!isNaN(expiry.getTime()) && new Date() > expiry) {
-            // Image expired — inject fallback as the only image to show
-            p1Images = fallbackId ? [fallbackId] : [];
             activeImageId = fallbackId;
-            p1Rotation = false; // show single fallback, no rotation
         }
     }
     // If no images at all, use fallback
