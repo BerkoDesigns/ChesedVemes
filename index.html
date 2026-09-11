@@ -45,7 +45,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   }
   .marquee-clip {
     position: absolute; top: 0; bottom: 0;
-    left: 24vw; right: 20vw;  /* keeps clear of the date/weather (left) and the RIGHT_SIDE box — Daf Yomi + בס"ד together, wider than בס"ד alone — with buffer */
+    left: 24vw; right: 24vw;  /* symmetric — matched to the larger (left) margin so the clip region's own center lines up with the true center of the screen, not skewed toward the shorter side */
     overflow: hidden;
   }
   .branding-shul {
