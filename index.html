@@ -353,6 +353,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     text-align: center; padding: 4px 8px;
     border-radius: 8px 8px 0 0; flex-shrink: 0;
     letter-spacing: 0.03em;
+    white-space: nowrap; overflow: hidden;
   }
   .donation-body {
     flex: 1; overflow: hidden;
@@ -1485,6 +1486,20 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
         let base = titleEl.dataset.base || titleEl.innerText;
         titleEl.dataset.base = base;
         titleEl.innerText = base + " | " + hebMonth;
+        // REAL BUG FIXED: this title bar (fixed 3.2vh, no wrap
+        // protection at all) could wrap to a second line whenever the
+        // combined "base title | month" text was long enough — which
+        // "הוצאות קפה" reliably was, while the shorter "נר למאור" never
+        // triggered it, making this look like it only affected one box.
+        // Shrinks the font until the full text fits on one line (CSS
+        // white-space: nowrap above forces the single-line rendering
+        // this checks against).
+        let titleVh = 3.2;
+        titleEl.style.fontSize = titleVh + "vh";
+        while (titleEl.scrollWidth > titleEl.clientWidth && titleVh > 1.5) {
+            titleVh -= 0.1;
+            titleEl.style.fontSize = titleVh + "vh";
+        }
     }
 
     if (!donors || donors.length === 0) {
