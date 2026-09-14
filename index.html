@@ -371,14 +371,14 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   .donor-dedication {
     color: var(--gold-dark); font-size: 5.0vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
-    font-weight: 400; word-wrap: break-word; width: 100%;
+    font-weight: 400; white-space: nowrap; overflow: hidden; width: 100%;
     padding-bottom: 3px; unicode-bidi: plaintext;
     border-bottom: 1px solid #c8b48a;
   }
   .donor-name {
     color: #2e4a44; font-size: 4.2vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
-    font-weight: 400; word-wrap: break-word; width: 100%;
+    font-weight: 400; white-space: nowrap; overflow: hidden; width: 100%;
     padding-top: 3px; unicode-bidi: plaintext;
   }
   .donation-empty {
@@ -1499,14 +1499,29 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
         </div>
     `).join('');
 
-    // Scale each entry as a unit based on its own overflow
+    // Scale each entry as a unit based on its own overflow. Both lines
+    // are forced to stay on one line each (never wrap — see the CSS
+    // white-space: nowrap above) — REAL BUG FIXED: previously only
+    // checked whether the whole entry overflowed its allocated height,
+    // which meant a dedication line could wrap to 2 lines and never
+    // trigger shrinking at all, as long as the box had enough vertical
+    // room to fit the wrap without overflowing. Now also checks each
+    // line's own horizontal overflow directly, and shrinks both lines
+    // together as one unit (matching the existing "shrink as a unit"
+    // design) so the dedication and the "donated by" line stay
+    // proportionate to each other rather than one shrinking alone.
     box.querySelectorAll('.donor-entry').forEach(entry => {
         let dedEl  = entry.querySelector('.donor-dedication');
         let nameEl = entry.querySelector('.donor-name');
         if (!dedEl) return;
         let dedVh  = 5.0, nameVh = 4.2;
-        // Shrink until entry content fits within allocated height
-        while (entry.scrollHeight > entry.clientHeight && dedVh > 1.0) {
+        function overflows() {
+            if (entry.scrollHeight > entry.clientHeight) return true;
+            if (dedEl.scrollWidth > dedEl.clientWidth) return true;
+            if (nameEl && nameEl.scrollWidth > nameEl.clientWidth) return true;
+            return false;
+        }
+        while (overflows() && dedVh > 1.0) {
             dedVh  = Math.max(1.0, dedVh  - 0.15);
             nameVh = Math.max(1.0, nameVh - 0.13);
             dedEl.style.fontSize  = dedVh  + "vh";
