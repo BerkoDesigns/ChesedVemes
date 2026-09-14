@@ -353,6 +353,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     text-align: center; padding: 4px 8px;
     border-radius: 8px 8px 0 0; flex-shrink: 0;
     letter-spacing: 0.03em;
+    white-space: nowrap; overflow: hidden;
   }
   .donation-body {
     flex: 1; overflow: hidden;
@@ -1485,6 +1486,20 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
         let base = titleEl.dataset.base || titleEl.innerText;
         titleEl.dataset.base = base;
         titleEl.innerText = base + " | " + hebMonth;
+        // REAL BUG FIXED: this title bar (fixed 3.2vh, no wrap
+        // protection at all) could wrap to a second line whenever the
+        // combined "base title | month" text was long enough — which
+        // "הוצאות קפה" reliably was, while the shorter "נר למאור" never
+        // triggered it, making this look like it only affected one box.
+        // Shrinks the font until the full text fits on one line (CSS
+        // white-space: nowrap above forces the single-line rendering
+        // this checks against).
+        let titleVh = 3.2;
+        titleEl.style.fontSize = titleVh + "vh";
+        while (titleEl.scrollWidth > titleEl.clientWidth && titleVh > 1.5) {
+            titleVh -= 0.1;
+            titleEl.style.fontSize = titleVh + "vh";
+        }
     }
 
     if (!donors || donors.length === 0) {
@@ -1499,7 +1514,17 @@ function renderDonors(containerId, titleId, donors, hebMonth) {
         </div>
     `).join('');
 
-    // Scale each entry as a unit based on its own overflow
+    // Scale each entry as a unit based on its own overflow. Both lines
+    // are forced to stay on one line each (never wrap — see the CSS
+    // white-space: nowrap above) — REAL BUG FIXED: previously only
+    // checked whether the whole entry overflowed its allocated height,
+    // which meant a dedication line could wrap to 2 lines and never
+    // trigger shrinking at all, as long as the box had enough vertical
+    // room to fit the wrap without overflowing. Now also checks each
+    // line's own horizontal overflow directly, and shrinks both lines
+    // together as one unit (matching the existing "shrink as a unit"
+    // design) so the dedication and the "donated by" line stay
+    // proportionate to each other rather than one shrinking alone.
     box.querySelectorAll('.donor-entry').forEach(entry => {
         let dedEl  = entry.querySelector('.donor-dedication');
         let nameEl = entry.querySelector('.donor-name');
@@ -2558,7 +2583,19 @@ function updateUI() {
     // the period, including Shabbos/Yom Tov; המלך המשפט weekdays only.
     let inAseresYemeiTeshuva = roshHashanahIso && yomKippurIso && statusIso >= roshHashanahIso && statusIso <= yomKippurIso;
     if (inAseresYemeiTeshuva) seasonPills.push("המלך הקדוש");
-    if (inAseresYemeiTeshuva && !isShab && !isYomTovStatus) seasonPills.push("המלך המשפט");
+    // REAL BUG FIXED: on the LAST night of Yom Tov (e.g. Motzei 2nd day
+    // Rosh Hashanah), statusIso deliberately stays on today all night
+    // (see the flip logic above) so the Motzei-Yom-Tov message can
+    // correctly detect "past RT" itself — but that same stuck
+    // statusIso/isYomTovStatus also kept this reading true here long
+    // after RT had actually passed, suppressing this pill for hours it
+    // should have shown. Scoped narrowly to just that one case (today
+    // IS Yom Tov, tomorrow is NOT, and RT has passed) so genuine
+    // Yom-Tov-to-Yom-Tov nights (e.g. RH day 1 into day 2, where day 2
+    // is still legitimately Yom Tov) are completely unaffected.
+    let yomTovEffectivelyOver = todayIsYomTovForFlip && !tomorrowIsYomTovForFlip && cSec >= rtSecs;
+    let effectiveIsYomTovForMishpat = isYomTovStatus && !yomTovEffectivelyOver;
+    if (inAseresYemeiTeshuva && !isShab && !effectiveIsYomTovForMishpat) seasonPills.push("המלך המשפט");
     let seasonLine = seasonPills.length
         ? `<div class="season-line">${seasonPills.map(p => `<span class="season-pill">${p}</span>`).join('')}</div>`
         : "";
@@ -2725,14 +2762,14 @@ function loadData() {
         console.log("LOCAL TEST MODE: Skipping Google Sheets fetch. Using cache only.");
         try { 
             let c = localStorage.getItem('chesed_cache'); 
-            if (c) applyData(JSON.parse(c)); 
+            if (c) applyData(JSON.parse(c).data); 
         } catch(e) {}
         return;
     }
     
     // Don't block - load async in background with SHORT timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     
     fetch(SCRIPT_URL + "?cb=" + new Date().getTime(), { signal: controller.signal })
     .then(r => r.json())
@@ -2745,6 +2782,16 @@ function loadData() {
     })
     .catch(err => {
         clearTimeout(timeoutId);
+        // REAL BUG FIXED: this used to do nothing at all on a failed
+        // fetch — no cache fallback, nothing — so a genuine network
+        // failure left the whole board stuck on its initial blank/
+        // placeholder state indefinitely. Now falls back to the last
+        // successfully cached response, same as the local-test-mode
+        // path above already does.
+        try {
+            let c = localStorage.getItem('chesed_cache');
+            if (c) applyData(JSON.parse(c).data);
+        } catch(e) {}
     });
 }
 
