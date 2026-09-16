@@ -55,7 +55,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   }
   #ENG_SIDE {
     position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
-    font-size: 2.5vh; color: var(--gold-dark);
+    font-size: 2.5vh; color: #1f3d35;
     font-family: 'Assistant', 'Arial Hebrew', sans-serif;
     direction: ltr; font-weight: 700; white-space: nowrap;
   }
@@ -65,7 +65,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     display: flex; align-items: center; gap: 14px; direction: rtl;
   }
   #BSD {
-    font-size: 2.8vh; color: var(--gold-dark);
+    font-size: 2.8vh; color: #1f3d35;
     font-family: 'Assistant', 'Arial Hebrew', sans-serif; font-weight: 700;
   }
   #DAF_YOMI {
@@ -116,7 +116,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   #DATE_LABEL {
     font-size: 5.0vh; line-height: 0.95; padding: 0; margin: 0;
     width: 100%; text-align: center; overflow: hidden; white-space: nowrap;
-    color: var(--gold-dark);
+    color: #1f3d35;
   }
   #PARSHA_LABEL {
     font-size: 5.5vh; line-height: 1.0; padding: 0; margin: 0;
@@ -150,12 +150,12 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     text-align: center; padding: 4px 10px;
   }
   .teal-box { background: #A8D5CC; color: #000; }
-  .gold-box  { color: var(--gold-dark); background: var(--box); }
+  .gold-box  { color: #1f3d35; background: var(--box); }
   /* Elul season lines (לדוד ה' אורי / שופר / סליחות) — Option A: compact pills */
   .season-line { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
   .season-pill {
     font-size: 2.6vh; line-height: 1.0;
-    background: #ffffffaa; border: 1px solid var(--gold-dark); color: var(--gold-dark);
+    background: #ffffffaa; border: 1px solid #000; color: #000;
     border-radius: 20px; padding: 1px 8px;
   }
   #status-head { font-size: 6.2vh; line-height: 1.0; display: block; width: 100%; }
@@ -183,7 +183,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   .head-sub-merged { display: block; width: 100%; line-height: 1.0; }
   .text-sep { width: 55%; height: 1px; background: rgba(0,0,0,0.28); margin: 0; flex-shrink: 0; }
   #status-kl {
-    background: #c0392b; border: 1px solid var(--gold-dark); color: #ffffff;
+    background: #c0392b; border: 1px solid #1f3d35; color: #ffffff;
     border-radius: 20px; padding: 1px 8px; line-height: 1.0;
     display: inline-block; margin-top: 2px;
   }
@@ -249,7 +249,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   .data-box span {
     font-weight: 400; font-size: 4.8vh; line-height: 1.1;
     display: block; width: 100%; word-wrap: break-word;
-    color: var(--text); unicode-bidi: plaintext;
+    color: #1f3d35; unicode-bidi: plaintext;
   }
   /* Daily Halachos box */
   .rabbi-box {
@@ -283,7 +283,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     text-rendering: optimizeLegibility;
   }
   .omer-box {
-    flex: 1; border: 2px solid var(--gold); border-radius: 10px;
+    flex: 1; border: 2px solid #1f3d35; border-radius: 10px;
     background: #d4eae6; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     padding: 4px 6px; text-align: center; overflow: hidden;
@@ -370,7 +370,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   }
   .donor-entry:last-child { border-bottom: none; }
   .donor-dedication {
-    color: var(--gold-dark); font-size: 5.0vh; line-height: 1.15;
+    color: #000; font-size: 5.0vh; line-height: 1.15;
     font-family: 'Suez One', 'Arial Hebrew', serif;
     font-weight: 400; word-wrap: break-word; width: 100%;
     padding-bottom: 3px; unicode-bidi: plaintext;
@@ -534,7 +534,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   <div class="clock-section">
     <div class="status-stack">
       <div id="DAY_LABEL">--</div>
-      <div id="DATE_LABEL" style="color: var(--gold);">--</div>
+      <div id="DATE_LABEL" style="color: #000;">--</div>
       <div id="PARSHA_LABEL">--</div>
     </div>
     <div class="main-clock" id="CLOCK">
