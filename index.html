@@ -966,15 +966,8 @@ function getHebMonthOnly(hebStr) {
 // hebcal.com: Rosh Hashanah 5787 = 1 Tishrei = Sat, Sept 12 2026; Yom
 // Kippur 5787 = 10 Tishrei = Mon, Sept 21 2026 — and cross-checked against
 // several other independently-known years (5784-5786) for extra confidence.
-// NOTE: deliberately local-time (not UTC) construction below, matching how
-// every other date computation in this file already works (getIso, all the
-// zman/RT comparisons, etc. are all local-time). An earlier version of this
-// used Date.UTC()/getUTCFullYear() — that broke under the F12 date-testing
-// tools (mobile_date_tester.js and the console snippet), which replace
-// window.Date with a plain function that doesn't carry over the static
-// Date.UTC method, throwing "Date.UTC is not a function" the moment this
-// ran. Local-time noon avoids that dependency entirely and is exactly as
-// safe against DST edge cases (noon is nowhere near a DST transition).
+// Local-time (not UTC) below — matches the rest of the file, and avoids
+// Date.UTC, which broke under the F12 date-testing tools.
 const HEB_FMT = new Intl.DateTimeFormat('en-US-u-ca-hebrew', { year: 'numeric', month: 'long', day: 'numeric' });
 const HEB_MONTH_NUM_TO_NAME = { 1:'Nisan', 2:'Iyar', 3:'Sivan', 4:'Tamuz', 5:'Av', 6:'Elul', 7:'Tishri', 8:'Heshvan', 9:'Kislev', 10:'Tevet', 11:'Shevat' };
 // Adar (12) / Adar I (12) / Adar II (13) deliberately not included — the
@@ -1378,11 +1371,14 @@ function getAlHanissimText(todayIso, cSecNow, offsetSec) {
     return "";
 }
 
+// 3px safety margin — was shrinking to an exact hairline fit, which let
+// the parsha name's last letter get clipped by rounding.
+const FIT_SAFETY_MARGIN_PX = 3;
 function fit(el, vhStart) {
     if (!el) return;
     let p = el.parentElement, vh = vhStart;
     el.style.fontSize = vh + "vh";
-    while ((p.scrollWidth > p.clientWidth || p.scrollHeight > p.clientHeight) && vh > 1.0) {
+    while ((p.scrollWidth > p.clientWidth - FIT_SAFETY_MARGIN_PX || p.scrollHeight > p.clientHeight - FIT_SAFETY_MARGIN_PX) && vh > 1.0) {
         vh -= 0.1;
         el.style.fontSize = vh + "vh";
     }
@@ -2494,8 +2490,12 @@ function updateUI() {
     } else if (isYomTovStatus) {
         let dNextDay = schedule[getIso(new Date(new Date(dIso + 'T00:00:00').getTime() + 86400000))];
         let nextDayIsYomTov = dNextDay && (dNextDay.yomtov === "Y");
-        
-        if (!nextDayIsYomTov && isPastRT) {
+
+        // Only trust "RT actually passed tonight" here — the old "before
+        // 3 AM" fallback wrongly fired during Yom Kippur's own early
+        // morning, before its RT had happened (12:26 AM bug).
+        let yomTovBoxPastRT = cSec >= rtSecs;
+        if (!nextDayIsYomTov && yomTovBoxPastRT) {
             head = "מוצאי יום טוב"; sub = "אתה חוננתנו"; cls = "gold-box";
             showDefaultBlessingExtra = true;
         } else {
