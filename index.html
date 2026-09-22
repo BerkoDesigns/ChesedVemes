@@ -1371,14 +1371,11 @@ function getAlHanissimText(todayIso, cSecNow, offsetSec) {
     return "";
 }
 
-// 3px safety margin — was shrinking to an exact hairline fit, which let
-// the parsha name's last letter get clipped by rounding.
-const FIT_SAFETY_MARGIN_PX = 3;
 function fit(el, vhStart) {
     if (!el) return;
     let p = el.parentElement, vh = vhStart;
     el.style.fontSize = vh + "vh";
-    while ((p.scrollWidth > p.clientWidth - FIT_SAFETY_MARGIN_PX || p.scrollHeight > p.clientHeight - FIT_SAFETY_MARGIN_PX) && vh > 1.0) {
+    while ((p.scrollWidth > p.clientWidth || p.scrollHeight > p.clientHeight) && vh > 1.0) {
         vh -= 0.1;
         el.style.fontSize = vh + "vh";
     }
