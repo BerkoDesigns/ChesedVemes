@@ -108,21 +108,13 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     border-radius: 10px 0 0 10px;
     padding: 4px 8px;
   }
-  #DAY_LABEL {
-    font-size: 5.8vh; line-height: 0.95; padding: 0; margin: 0;
-    width: 100%; text-align: center; overflow: hidden; white-space: nowrap;
-    color: var(--text);
+  #DAY_LABEL, #DATE_LABEL, #PARSHA_LABEL {
+    font-size: 5.2vh; line-height: 0.9; white-space: nowrap; padding: 0; margin: 0;
+    width: 100%; text-align: center; overflow: hidden;
   }
-  #DATE_LABEL {
-    font-size: 5.0vh; line-height: 0.95; padding: 0; margin: 0;
-    width: 100%; text-align: center; overflow: hidden; white-space: nowrap;
-    color: #1f3d35;
-  }
-  #PARSHA_LABEL {
-    font-size: 5.5vh; line-height: 1.0; padding: 0; margin: 0;
-    width: 100%; text-align: center; overflow: hidden; white-space: nowrap;
-    color: #000;
-  }
+  #DAY_LABEL   { color: var(--text); }
+  #DATE_LABEL  { color: #1f3d35; }
+  #PARSHA_LABEL { color: #000; }
   .main-clock {
     flex: 1 1 auto; display: flex;
     align-items: center; justify-content: center;
@@ -688,6 +680,7 @@ var imageExpiryMap = {};
 var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "";
 var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
 var shacharisOverride = "", minchaMaarivOverride = "";
+var tefilaBoxOff = false; // manual on/off for the weekday davening box, independent of day type
 var lastTefilaHTML = "";
 const EARLY_MINCHA_TIME = "14:15"; // fixed 2:15 PM — not editable, only on/off
 
@@ -1849,8 +1842,18 @@ function loadWeather() {
 // disappears entirely when its toggle is off. Manual overrides (set via
 // the Manager app) replace the computed value for שחרית or מנחה-מעריב
 // when today falls inside an override's date range.
-function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff) {
+function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomTov) {
     if (!EL['ZMANIM_TEFILA']) return;
+
+    // Auto-hide on Yom Tov, or manual override — stays visible on a regular Shabbos.
+    if (isYomTov || tefilaBoxOff) {
+        EL['ZMANIM_TEFILA'].style.flex = 0;
+        if (lastTefilaHTML !== "") {
+            lastTefilaHTML = "";
+            EL['ZMANIM_TEFILA'].innerHTML = "";
+        }
+        return;
+    }
 
     // שחרית (יום א') — always its own fixed time, untouched by the
     // RC/Chol HaMoed swap or by overrides (those only affect the main line).
@@ -2046,15 +2049,12 @@ function updateUI() {
     let dayLabel = isMotzMaariv ? "מוצאי שבת" : (DAY_MAP[dDate.day] || dDate.day);
     if (EL['DAY_LABEL'].innerText !== dayLabel) {
         EL['DAY_LABEL'].innerText = dayLabel;
-        fit(EL['DAY_LABEL'], 5.8);
     }
 
     if (dIso !== lastDateIso) {
         lastDateIso = dIso;
         EL['DATE_LABEL'].innerText   = dDate.heb;
         EL['PARSHA_LABEL'].innerText = dDate.parsha ? "פרשת " + dDate.parsha : "";
-        fit(EL['DATE_LABEL'],   5.0);
-        fit(EL['PARSHA_LABEL'], 5.5);
     }
 
     // ── RULES 8-13: DYNAMIC SORTED ZMANIM ──────────────────────────
@@ -2100,7 +2100,7 @@ function updateUI() {
     // Friday: מנחה וקבלת שבת + זרע שמשון — skip on Erev Shabbat Yom Tov
     // PDF override: fridayMincha replaces the hardcoded 7:00 PM when present;
     // זרע שמשון stays derived as 20 min before Mincha either way.
-    if (isFriday && isMinchaFriSeason && !isYomTov) {
+    if (isFriday && isMinchaFriSeason && !isYomTov && !tomorrowIsYomTovForFlip) {
         let friMinchaTime = (pdfOverride && pdfOverride.fridayMincha) ? pdfOverride.fridayMincha : '7:00:00';
         let friMinchaSec  = getSec(friMinchaTime, true);
         let zeraTime      = shiftTime(friMinchaTime, -20);
@@ -2144,7 +2144,7 @@ function updateUI() {
     // זמנים התפילה בימי חול — the always-visible davening box, entirely
     // separate from this sorted list (see renderTefilaBox below). Not
     // day-gated, no live highlighting, rendered independently.
-    renderTefilaBox(now, dayW, holidayText, cSec, getSec(dToday.z[9], true) - 1800);
+    renderTefilaBox(now, dayW, holidayText, cSec, getSec(dToday.z[9], true) - 1800, isYomTov);
 
     // רבינו תם — always from the Zemanim sheet now (PDF override removed
     // per request); rtSecs (Shabbos boundary/flip logic used throughout
@@ -2886,6 +2886,7 @@ function applyData(d) {
     maarivWeekday        = d.maarivWeekday        || "21:45";
     shacharisOverride    = d.shacharisOverride    || "";
     minchaMaarivOverride = d.minchaMaarivOverride || "";
+    tefilaBoxOff         = d.tefilaBoxOff === true;
 
     // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
