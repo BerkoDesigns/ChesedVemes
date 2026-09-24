@@ -677,7 +677,7 @@ var lastRabbiText = null;
 var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
 var p1RotateTimer = null, isShabbosImageActive = false;
 var imageExpiryMap = {};
-var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "";
+var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "", shacharisCholHamoed2 = "";
 var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
 var shacharisOverride = "", minchaMaarivOverride = "";
 var tefilaBoxOff = false; // manual on/off for the weekday davening box, independent of day type
@@ -1877,14 +1877,19 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     let todayIsRC     = holidayText.includes("ראש חודש");
     let todayIsCHM    = holidayText.includes("חול המועד");
 
+    // Box header — swaps to the Chol HaMoed wording on the same window as
+    // the שחרית row(s) below (erev CHM from the Tachanun-eve cutoff, or
+    // CHM itself through midday).
+    let isCHMWindow = tomorrowIsCHM || (todayIsCHM && isBeforeMidday);
+    let boxHeader = isCHMWindow ? 'זמני התפילה לחול המועד' : 'זמנים התפילה בימי חול';
     let shLabel = 'שחרית', shSec = parse24ToSec(shacharisWeekday);
     if (tomorrowIsRC || (todayIsRC && isBeforeMidday)) {
         shLabel = 'שחרית ראש חודש'; shSec = parse24ToSec(shacharisRoshChodesh);
-    } else if (tomorrowIsCHM || (todayIsCHM && isBeforeMidday)) {
-        shLabel = 'שחרית חול המועד'; shSec = parse24ToSec(shacharisCholHamoed);
     }
-    // Manual override replaces just the time — the label above still stands.
-    if (shacharisOverride) {
+    // Manual override replaces just the time — only applies to the single
+    // regular/Rosh Chodesh row; Chol HaMoed shows its own two dedicated
+    // minyan times below instead.
+    if (shacharisOverride && !isCHMWindow) {
         let ovrSec = parse24ToSec(shacharisOverride);
         if (ovrSec != null) shSec = ovrSec;
     }
@@ -1923,14 +1928,22 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
 
     let rows = [];
     rows.push(`<div class="z-row"><span class="z-label">שחרית (יום א')</span><span class="z-time">${shSunSec!=null ? fmtZmanNoSec(secToTimeStr(shSunSec)) : '--:--'}</span></div>`);
-    rows.push(`<div class="z-row"><span class="z-label">${shLabel}</span><span class="z-time">${shSec!=null ? fmtZmanNoSec(secToTimeStr(shSec)) : '--:--'}</span></div>`);
+    if (isCHMWindow) {
+        // Chol HaMoed: two Shacharis minyanim, replacing the single row.
+        let chm1Sec = parse24ToSec(shacharisCholHamoed);
+        let chm2Sec = parse24ToSec(shacharisCholHamoed2);
+        rows.push(`<div class="z-row"><span class="z-label">שחרית מנין א'</span><span class="z-time">${chm1Sec!=null ? fmtZmanNoSec(secToTimeStr(chm1Sec)) : '--:--'}</span></div>`);
+        rows.push(`<div class="z-row"><span class="z-label">שחרית מנין ב'</span><span class="z-time">${chm2Sec!=null ? fmtZmanNoSec(secToTimeStr(chm2Sec)) : '--:--'}</span></div>`);
+    } else {
+        rows.push(`<div class="z-row"><span class="z-label">${shLabel}</span><span class="z-time">${shSec!=null ? fmtZmanNoSec(secToTimeStr(shSec)) : '--:--'}</span></div>`);
+    }
     if (earlyMinchaSec != null) {
         rows.push(`<div class="z-row"><span class="z-label">מנחה</span><span class="z-time">${fmtZmanNoSec(secToTimeStr(earlyMinchaSec))}</span></div>`);
     }
     rows.push(`<div class="z-row"><span class="z-label">מנחה-מעריב</span><span class="z-time">${minchaMaarivSec!=null ? fmtZmanNoSec(secToTimeStr(minchaMaarivSec)) : '--:--'}</span></div>`);
     rows.push(`<div class="z-row"><span class="z-label">מעריב</span><span class="z-time">${maarivSec!=null ? fmtZmanNoSec(secToTimeStr(maarivSec)) : '--:--'}</span></div>`);
 
-    let html = '<div class="zemanim-header">זמנים התפילה בימי חול</div>' + rows.join('');
+    let html = '<div class="zemanim-header">' + boxHeader + '</div>' + rows.join('');
     EL['ZMANIM_TEFILA'].style.flex = rows.length;
     if (html !== lastTefilaHTML) {
         lastTefilaHTML = html;
@@ -2881,6 +2894,7 @@ function applyData(d) {
     shacharisWeekday     = d.shacharisWeekday     || "06:30";
     shacharisRoshChodesh = d.shacharisRoshChodesh || "06:20";
     shacharisCholHamoed  = d.shacharisCholHamoed  || "06:20";
+    shacharisCholHamoed2 = d.shacharisCholHamoed2 || "";
     minchaEarlyEnabled   = d.minchaEarlyEnabled !== false;
     minchaOffsetMinutes  = (d.minchaOffsetMinutes !== undefined && d.minchaOffsetMinutes !== "") ? d.minchaOffsetMinutes : 10;
     maarivWeekday        = d.maarivWeekday        || "21:45";
