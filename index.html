@@ -1878,10 +1878,12 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     let todayIsRC     = holidayText.includes("ראש חודש");
     let todayIsCHM    = holidayText.includes("חול המועד");
 
-    // Box header — swaps to the Chol HaMoed wording on the same window as
-    // the שחרית row(s) below (erev CHM from the Tachanun-eve cutoff, or
-    // CHM itself through midday).
-    let isCHMWindow = tomorrowIsCHM || (todayIsCHM && isBeforeMidday);
+    // Box header — swaps to the Chol HaMoed wording starting erev CHM
+    // (from the Tachanun-eve cutoff) and staying on for the ENTIRE day,
+    // every day of Chol HaMoed itself — unlike the Rosh Chodesh label
+    // swap below, this one deliberately does NOT cut off at midday; Chol
+    // HaMoed's two מנין times are meant to show continuously all day.
+    let isCHMWindow = todayIsCHM || tomorrowIsCHM;
     let boxHeader = isCHMWindow ? 'זמני התפילה לחול המועד' : 'זמנים התפילה בימי חול';
     let shLabel = 'שחרית', shSec = parse24ToSec(shacharisWeekday);
     if (tomorrowIsRC || (todayIsRC && isBeforeMidday)) {
