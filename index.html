@@ -1855,8 +1855,9 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
         return;
     }
 
-    // שחרית (יום א') — always its own fixed time, untouched by the
-    // RC/Chol HaMoed swap or by overrides (those only affect the main line).
+    // שחרית (יום א') — always its own fixed time, shown every day of the
+    // year EXCEPT during Chol HaMoed (where the two מנין rows below cover
+    // Sunday too, so this separate line would be redundant).
     let shSunSec = parse24ToSec(shacharisSunday);
 
     // Regular שחרית line — swaps label+time to Rosh Chodesh/Chol HaMoed from
@@ -1927,15 +1928,16 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     let maarivSec = parse24ToSec(maarivWeekday);
 
     let rows = [];
-    rows.push(`<div class="z-row"><span class="z-label">שחרית (יום א')</span><span class="z-time">${shSunSec!=null ? fmtZmanNoSec(secToTimeStr(shSunSec)) : '--:--'}</span></div>`);
     if (isCHMWindow) {
-        // Chol HaMoed: two Shacharis minyanim, replacing the single row.
+        // Chol HaMoed: two Shacharis minyanim, replacing both the regular
+        // שחרית row and the separate שחרית (יום א') row below.
         let chm1Sec = parse24ToSec(shacharisCholHamoed);
         let chm2Sec = parse24ToSec(shacharisCholHamoed2);
         rows.push(`<div class="z-row"><span class="z-label">שחרית מנין א'</span><span class="z-time">${chm1Sec!=null ? fmtZmanNoSec(secToTimeStr(chm1Sec)) : '--:--'}</span></div>`);
         rows.push(`<div class="z-row"><span class="z-label">שחרית מנין ב'</span><span class="z-time">${chm2Sec!=null ? fmtZmanNoSec(secToTimeStr(chm2Sec)) : '--:--'}</span></div>`);
     } else {
         rows.push(`<div class="z-row"><span class="z-label">${shLabel}</span><span class="z-time">${shSec!=null ? fmtZmanNoSec(secToTimeStr(shSec)) : '--:--'}</span></div>`);
+        rows.push(`<div class="z-row"><span class="z-label">שחרית (יום א')</span><span class="z-time">${shSunSec!=null ? fmtZmanNoSec(secToTimeStr(shSunSec)) : '--:--'}</span></div>`);
     }
     if (earlyMinchaSec != null) {
         rows.push(`<div class="z-row"><span class="z-label">מנחה</span><span class="z-time">${fmtZmanNoSec(secToTimeStr(earlyMinchaSec))}</span></div>`);
