@@ -16,7 +16,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   document.head.appendChild(_testScript);
 }
 </script>
-<!-- Version 3.5 – June 2026 | Screenshot system (html2canvas → Make webhook) -->
+<!-- Version 3.6 – October 2026 (daily / Sunday-only מנחה-מעריב switches) | Screenshot system (html2canvas → Make webhook) -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -680,6 +680,7 @@ var imageExpiryMap = {};
 var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "", shacharisCholHamoed2 = "";
 var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
 var shacharisOverride = "", minchaMaarivOverride = "";
+var minchaMaarivDailyEnabled = true, minchaMaarivSundayEnabled = false; // Main!Y / Main!Z
 var tefilaBoxOff = false; // manual on/off for the weekday davening box, independent of day type
 var lastTefilaHTML = "";
 const EARLY_MINCHA_TIME = "14:15"; // fixed 2:15 PM — not editable, only on/off
@@ -1927,6 +1928,21 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
         }
     }
 
+    // מנחה-מעריב (יום א') — Sunday-only line: the upcoming Sunday's own שקיעה
+    // minus the same offset, rounded up to the minute (today if it IS Sunday).
+    let sunMinchaMaarivSec = null;
+    if (minchaMaarivSundayEnabled) {
+        let sunDate = new Date(now.getTime() + (dayW === 0 ? 0 : 7 - dayW) * 86400000);
+        let sS = schedule[getIso(sunDate)];
+        if (sS && sS.z && sS.z[9]) {
+            let sec = getSec(sS.z[9], true);
+            if (sec > 0) {
+                let offsetSec = (Number(minchaOffsetMinutes) || 10) * 60;
+                sunMinchaMaarivSec = Math.ceil((sec - offsetSec) / 60) * 60;
+            }
+        }
+    }
+
     // מעריב — fixed nightly time.
     let maarivSec = parse24ToSec(maarivWeekday);
 
@@ -1945,7 +1961,12 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     if (earlyMinchaSec != null) {
         rows.push(`<div class="z-row"><span class="z-label">מנחה</span><span class="z-time">${fmtZmanNoSec(secToTimeStr(earlyMinchaSec))}</span></div>`);
     }
-    rows.push(`<div class="z-row"><span class="z-label">מנחה-מעריב</span><span class="z-time">${minchaMaarivSec!=null ? fmtZmanNoSec(secToTimeStr(minchaMaarivSec)) : '--:--'}</span></div>`);
+    if (minchaMaarivDailyEnabled) {
+        rows.push(`<div class="z-row"><span class="z-label">מנחה-מעריב</span><span class="z-time">${minchaMaarivSec!=null ? fmtZmanNoSec(secToTimeStr(minchaMaarivSec)) : '--:--'}</span></div>`);
+    }
+    if (minchaMaarivSundayEnabled) {
+        rows.push(`<div class="z-row"><span class="z-label">מנחה-מעריב (יום א')</span><span class="z-time">${sunMinchaMaarivSec!=null ? fmtZmanNoSec(secToTimeStr(sunMinchaMaarivSec)) : '--:--'}</span></div>`);
+    }
     rows.push(`<div class="z-row"><span class="z-label">מעריב</span><span class="z-time">${maarivSec!=null ? fmtZmanNoSec(secToTimeStr(maarivSec)) : '--:--'}</span></div>`);
 
     let html = '<div class="zemanim-header">' + boxHeader + '</div>' + rows.join('');
@@ -2906,6 +2927,8 @@ function applyData(d) {
     shacharisOverride    = d.shacharisOverride    || "";
     minchaMaarivOverride = d.minchaMaarivOverride || "";
     tefilaBoxOff         = d.tefilaBoxOff === true;
+    minchaMaarivDailyEnabled  = d.minchaMaarivDailyEnabled !== false;
+    minchaMaarivSundayEnabled = d.minchaMaarivSundayEnabled === true;
 
     // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
