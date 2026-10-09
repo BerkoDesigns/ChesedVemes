@@ -16,7 +16,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   document.head.appendChild(_testScript);
 }
 </script>
-<!-- Version 3.6 – October 2026 (daily / Sunday-only מנחה-מעריב switches) | Screenshot system (html2canvas → Make webhook) -->
+<!-- Version 3.6 – October 2026 (daily / Sunday-only מנחה-מעריב switches; Friday מנחה וקבלת שבת + זרע שמשון now also show year-round when PDFZmanim col J has a time) | Screenshot system (html2canvas → Make webhook) -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -2139,8 +2139,12 @@ function updateUI() {
     // Friday: מנחה וקבלת שבת + זרע שמשון — skip on Erev Shabbat Yom Tov
     // PDF override: fridayMincha replaces the hardcoded 7:00 PM when present;
     // זרע שמשון stays derived as 20 min before Mincha either way.
-    if (isFriday && isMinchaFriSeason && !isYomTov && !tomorrowIsYomTovForFlip) {
-        let friMinchaTime = (pdfOverride && pdfOverride.fridayMincha) ? pdfOverride.fridayMincha : '7:00:00';
+    // Shown Apr-Sep (7:00 PM default) OR any time of year when the PDFZmanim
+    // tab (col J, fridayMincha) has a time for this week — winter Friday Mincha
+    // comes only from that column, so with no time there it stays hidden.
+    let friPdfMincha = !!(pdfOverride && pdfOverride.fridayMincha);
+    if (isFriday && (isMinchaFriSeason || friPdfMincha) && !isYomTov && !tomorrowIsYomTovForFlip) {
+        let friMinchaTime = friPdfMincha ? pdfOverride.fridayMincha : '7:00:00';
         let friMinchaSec  = getSec(friMinchaTime, true);
         let zeraTime      = shiftTime(friMinchaTime, -20);
         zRows.push({ id:'r_fri_mincha', label:'מנחה וקבלת שבת', timeStr: friMinchaTime,
