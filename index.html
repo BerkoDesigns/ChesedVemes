@@ -16,7 +16,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   document.head.appendChild(_testScript);
 }
 </script>
-<!-- Version 3.6 – October 2026 (daily / Sunday-only מנחה-מעריב switches; Friday מנחה וקבלת שבת + זרע שמשון now also show year-round when PDFZmanim col J has a time) | Screenshot system (html2canvas → Make webhook) -->
+<!-- Version 3.7 – October 2026 (IMAGE START SCHEDULING: images with a future start stay hidden; once started, the latest-started image is the only one shown until it expires or its start is cleared) | (3.6: daily / Sunday-only מנחה-מעריב switches; Friday מנחה וקבלת שבת + זרע שמשון now also show year-round when PDFZmanim col J has a time) | Screenshot system (html2canvas → Make webhook) -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -677,6 +677,7 @@ var lastRabbiText = null;
 var p1Images = [], p1Index = 0, p1Rotation = true, activeImageId = "";
 var p1RotateTimer = null, isShabbosImageActive = false;
 var imageExpiryMap = {};
+var imageStartMap = {};
 var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shacharisCholHamoed = "", shacharisCholHamoed2 = "";
 var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
 var shacharisOverride = "", minchaMaarivOverride = "";
@@ -1694,8 +1695,30 @@ function isImageExpired(fileId) {
     return !isNaN(expiry.getTime()) && new Date() > expiry;
 }
 
+// START SCHEDULING — an image can be given a start date/time (ImageExpiry tab col C).
+//  • before its start it is hidden
+//  • once started, the image with the LATEST start (that has not expired) is the ONLY one shown,
+//    until it expires or its start is cleared in the admin panel
+function imageStartMs(fileId) {
+    if (!imageStartMap || !imageStartMap[fileId]) return NaN;
+    return new Date(String(imageStartMap[fileId]).replace(' ', 'T')).getTime();
+}
+function applyStartRule(list) {
+    const nowMs = Date.now();
+    const visible = [];
+    let best = "", bestT = -Infinity;
+    list.forEach(id => {
+        const t = imageStartMs(id);
+        if (isNaN(t)) { visible.push(id); return; }
+        if (t > nowMs) return;             // scheduled, not started yet — hidden
+        visible.push(id);
+        if (t >= bestT) { best = id; bestT = t; }
+    });
+    return best ? [best] : visible;
+}
+
 function getActiveImages() {
-    return p1Images.filter(id => !isImageExpired(id));
+    return applyStartRule(p1Images.filter(id => !isImageExpired(id)));
 }
 
 function rotateP1() {
@@ -1755,7 +1778,7 @@ function rotateP1() {
 // reuses the same generic isImageExpired()/imageExpiryMap, since expiry was
 // never weekday-specific to begin with.
 function getActiveShabbosImages() {
-    return shabbosPics.filter(id => !isImageExpired(id));
+    return applyStartRule(shabbosPics.filter(id => !isImageExpired(id)));
 }
 
 function rotateShabbos() {
@@ -2988,6 +3011,7 @@ function applyData(d) {
     shabbosRotationEnabled = !!d.shabbosRotationEnabled;
     p1Rotation    = d.p1Rotation !== false;
     imageExpiryMap = d.imageExpiryMap || {};
+    imageStartMap  = d.imageStartMap  || {};
     resolvedFallbackId = d.imageFallbackId || DEFAULT_FALLBACK_IMAGE_ID;
 
     // Handle image expiry — if expired, override activeImageId with
