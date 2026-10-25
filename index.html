@@ -16,7 +16,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   document.head.appendChild(_testScript);
 }
 </script>
-<!-- Version 3.7 – October 2026 (IMAGE START SCHEDULING: images with a future start stay hidden; once started, the latest-started image is the only one shown until it expires or its start is cleared) | (3.6: daily / Sunday-only מנחה-מעריב switches; Friday מנחה וקבלת שבת + זרע שמשון now also show year-round when PDFZmanim col J has a time) | Screenshot system (html2canvas → Make webhook) -->
+<!-- Version 3.8 – October 2026 (HEADER: one font with nikud, lines enter from the left; board no longer freezes at 0:00:00 when browser storage is blocked) | (SHABBOS CONTROL: own Shabbos fallback image, replacement + auto-expiry to end of Shabbos/Yom Tov) | 3.7: (IMAGE START SCHEDULING: images with a future start stay hidden; once started, the latest-started image is the only one shown until it expires or its start is cleared) | (3.6: daily / Sunday-only מנחה-מעריב switches; Friday מנחה וקבלת שבת + זרע שמשון now also show year-round when PDFZmanim col J has a time) | Screenshot system (html2canvas → Make webhook) -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;700;800&family=Frank+Ruhl+Libre:wght@400;700;900&family=Suez+One&display=swap');
   :root { --gold: #558B7D; --gold-dark: #3D6B60; --bg: #F1F8F6; --box: #C7DDD8; --box2: #A8D5CC; --text: #3E5C54; --dim: #6B8680; }
@@ -49,7 +49,8 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     overflow: hidden;
   }
   .branding-shul {
-    font-size: 4.2vh; color: var(--text); font-weight: bold;
+    font-family: 'Frank Ruhl Libre', 'Suez One', 'Arial Hebrew', serif;  /* has nikud (vowel marks) -> every header line looks the same */
+    font-size: 4.2vh; color: var(--text); font-weight: 900;
     position: absolute; left: 50%; top: 50%; white-space: nowrap;
     transform: translate(-50%, -50%);
   }
@@ -646,6 +647,7 @@ function initEls() {
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr9nQSnr4zjazj8uT1JaHovhaebiUBlTawPntUWpR2mztum2eLsoaO04oVKgwvOkdPJQ/exec";
 
 var defaultSummerMsg = "", tefilaOverride = "";
+var shabbosFallbackId = "";
 var shabbosPics = [], shabbosRotationEnabled = false, shabbosIndex = 0, shabbosRotateTimer = null;
 var resolvedFallbackId = "";
 var schedule = {}, moladList = [], lastDateIso = "", lastZmanim = "", currentStatusHTML = "";
@@ -1778,7 +1780,12 @@ function rotateP1() {
 // reuses the same generic isImageExpired()/imageExpiryMap, since expiry was
 // never weekday-specific to begin with.
 function getActiveShabbosImages() {
-    return applyStartRule(shabbosPics.filter(id => !isImageExpired(id)));
+    // v3.8: once a scheduled Shabbos image has STARTED, the un-scheduled older ones are superseded — so if the
+    // scheduled one expires, the board goes to the Shabbos fallback instead of reviving an old image.
+    const nowMs = Date.now();
+    const startedIds = shabbosPics.filter(id => { const t = imageStartMs(id); return !isNaN(t) && t <= nowMs; });
+    const pool = startedIds.length ? startedIds : shabbosPics;
+    return applyStartRule(pool.filter(id => !isImageExpired(id)));
 }
 
 function rotateShabbos() {
@@ -1807,7 +1814,8 @@ function updateP1Image(isKodesh) {
             // logo the weekday images use when everything's expired there too.
             if (shabbosRotateTimer) { clearInterval(shabbosRotateTimer); shabbosRotateTimer = null; }
             if (p1RotateTimer) { clearInterval(p1RotateTimer); p1RotateTimer = null; }
-            const fallbackSrc = resolvedFallbackId ? "https://lh3.googleusercontent.com/d/" + resolvedFallbackId + "=w1200" : "";
+            const shFb = shabbosFallbackId || resolvedFallbackId;   // v3.8: Shabbos has its own fallback
+            const fallbackSrc = shFb ? "https://lh3.googleusercontent.com/d/" + shFb + "=w1200" : "";
             if (fallbackSrc && img.src !== fallbackSrc) {
                 img.style.opacity = 0;
                 setTimeout(() => { img.src = fallbackSrc; img.style.opacity = 1; }, 800);
@@ -3009,6 +3017,7 @@ function applyData(d) {
     activeImageId = d.activeImageId || "";
     shabbosPics   = d.shabbosPics || (d.shabbosPic ? [d.shabbosPic] : []);
     shabbosRotationEnabled = !!d.shabbosRotationEnabled;
+    shabbosFallbackId = d.shabbosFallbackId || "";
     p1Rotation    = d.p1Rotation !== false;
     imageExpiryMap = d.imageExpiryMap || {};
     imageStartMap  = d.imageStartMap  || {};
@@ -3122,7 +3131,7 @@ try {
             console.log('Cache expired or invalid — waiting for live fetch');
         }
     }
-} catch(e) { localStorage.removeItem('chesed_cache'); }
+} catch(e) { try { localStorage.removeItem('chesed_cache'); } catch(_) {} }   // storage may be blocked (sandboxed preview) — never let that stop the board
 setInterval(updateClock, 1000); updateClock();
 
 // SCROLLING HEADER LINES — cycles the shul name plus any currently-
@@ -3178,7 +3187,8 @@ async function runHeaderMarquee() {
             const offScreenPx = clipWidthPx / 2 + textWidthPx / 2 + 20;
 
             el.style.transition = 'none';
-            el.style.transform = `translate(calc(-50% + ${offScreenPx}px + ${offsetPx}px), -50%)`;
+            // enters from the LEFT, moving right: the right edge (= start of a Hebrew sentence) arrives first
+            el.style.transform = `translate(calc(-50% - ${offScreenPx}px + ${offsetPx}px), -50%)`;
             void el.offsetWidth;
 
             // One continuous, constant-feel motion the whole way in —
