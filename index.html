@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1280, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes">
-<title>קהל חסד ואמת – Master Board v3.8.11</title>
+<title>קהל חסד ואמת – Master Board v3.8.12</title>
 <script>/* PREVIEW_ASOF: the manager-app "This Shabbos" preview opens the board with &preview=1&asof=YYYY-MM-DDTHH:MM:SS, and the board then behaves as if it were that moment. The TV never has these in its address, so it is unaffected. */
 (function(){try{var q=location.search;if(!/[?&]preview=1/.test(q))return;var m=/[?&]asof=([^&]+)/.exec(q);if(!m)return;var RD=Date,t=new RD(decodeURIComponent(m[1])).getTime();if(isNaN(t))return;var off=t-RD.now();
 class FD extends RD{constructor(...a){if(a.length===0)super(RD.now()+off);else super(...a);}static now(){return RD.now()+off;}}
@@ -192,7 +192,7 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
 
   .zemanim-header {
     background: var(--gold); color: #000;
-    font-size: 3.0vh; line-height: 1; font-weight: 800;
+    font-size: 1.9vh; line-height: 1; font-weight: 800;
     text-align: center; display: flex; align-items: center; justify-content: center;
     padding: 1px 8px;
     border-radius: 8px 8px 0 0; flex-shrink: 0;
@@ -200,12 +200,12 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
   }
   /* ── ZEMANIM ─────────────────────────────────────────────────── */
   .zemanim-col-wrap {
-    width: 23vw; flex-shrink: 0;
-    display: flex; flex-direction: column; gap: 8px;
+    width: 19vw; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 3px;
   }
   .zemanim-col {
     width: 100%; border: 2px solid var(--gold); border-radius: 10px;
-    display: flex; flex-direction: column; padding: 2px;
+    display: flex; flex-direction: column; padding: 0;
     background: var(--box); overflow: hidden; flex-shrink: 0;
   }
   .z-row {
@@ -214,8 +214,18 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
     align-items: center; flex: 1; overflow: hidden;
   }
   .z-row:last-child { border-bottom: none; }
-  .z-label { color: #1f3d35; font-size: 3.6vh; }
-  .z-time  { color: #1a2e28; font-size: 3.2vh; font-family: 'Assistant', sans-serif; font-weight: 700; direction: ltr; }
+  .z-label { color: #1f3d35; font-size: var(--zfs, 3.6vh); }
+  /* small labels inside the Shabbos box (ערב שבת קודש / שבת קודש) */
+  .tef-sec {
+    flex: 0 0 auto; text-align: center; color: #8a6a14; font-weight: 800;
+    font-size: 1.6vh; line-height: 1.1; padding: 0 8px;
+    background: rgba(201,162,39,0.12); border-top: 1px solid #d4cec6; border-bottom: 1px solid #d4cec6;
+  }
+  .zemanim-header + .tef-sec { border-top: none; }
+  #ZMANIM_SHABBOS .zemanim-header, #ZMANIM_TEFILA .zemanim-header { font-size: 1.7vh; }
+  /* every row in all three boxes gets the SAME height (set by layoutZemanim) */
+  .zemanim-col-wrap .z-row { flex: none; height: var(--rh, 3vh); box-sizing: border-box; line-height: 1.1; padding: 0 8px; }
+  .z-time  { color: #1a2e28; font-size: var(--ztfs, 3.2vh); font-family: 'Assistant', sans-serif; font-weight: 700; direction: ltr; }
   .active-zman { background: #A8D5CC !important; }
   .active-zman .z-label, .active-zman .z-time { color: #000 !important; }
 
@@ -549,11 +559,14 @@ if (location.search.indexOf('test=1') !== -1 || location.hash.indexOf('test=1') 
          below it as a genuinely separate box, the always-visible davening
          times box (never day-gated, never mixed into the live list) -->
     <div class="zemanim-col-wrap">
-      <div class="zemanim-col" id="ZMANIM_LIST" style="flex: 11;">
+      <div class="zemanim-col" id="ZMANIM_LIST" style="flex: none;">
         <div class="zemanim-header">זמני היום</div>
       </div>
-      <div class="zemanim-col" id="ZMANIM_TEFILA" style="flex: 5;">
-        <div class="zemanim-header">זמנים התפילה בימי חול</div>
+      <div class="zemanim-col" id="ZMANIM_SHABBOS" style="flex: none;">
+        <div class="zemanim-header">זמני התפילות לשבת</div>
+      </div>
+      <div class="zemanim-col" id="ZMANIM_TEFILA" style="flex: none;">
+        <div class="zemanim-header">זמני התפילות לחול</div>
       </div>
     </div>
 
@@ -647,7 +660,7 @@ function initEls() {
      'ANN','O2','SLEEP_OVERLAY','SLEEP_CLOCK',
      'ENG_DATE','WEATHER','ZMANIM_LIST',
      'NER_BODY','COFFEE_BODY','NER_TITLE','COFFEE_TITLE',
-     'PORT_IMG','OMER','RABBI','ZMANIM_TEFILA'
+     'PORT_IMG','OMER','RABBI','ZMANIM_TEFILA','ZMANIM_SHABBOS'
     ].forEach(id => { EL[id] = document.getElementById(id); });
 }
 
@@ -691,6 +704,7 @@ var shacharisSunday = "", shacharisWeekday = "", shacharisRoshChodesh = "", shac
 var minchaEarlyEnabled = true, minchaOffsetMinutes = 10, maarivWeekday = "";
 var shacharisOverride = "", minchaMaarivOverride = "";
 var minchaMaarivDailyEnabled = true, minchaMaarivSundayEnabled = false; // Main!Y / Main!Z
+var avosUbanimEnabled = true, avosUbanimTime = "18:30"; // Main!AC / Main!AD (אבות ובנים row in the Shabbos box)
 var tefilaBoxOff = false; // manual on/off for the weekday davening box, independent of day type
 var lastTefilaHTML = "";
 const EARLY_MINCHA_TIME = "14:15"; // fixed 2:15 PM — not editable, only on/off
@@ -1887,10 +1901,11 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
 
     // Auto-hide on Yom Tov, or manual override — stays visible on a regular Shabbos.
     if (isYomTov || tefilaBoxOff) {
-        EL['ZMANIM_TEFILA'].style.flex = 0;
+        EL['ZMANIM_TEFILA'].style.display = 'none';
         if (lastTefilaHTML !== "") {
             lastTefilaHTML = "";
             EL['ZMANIM_TEFILA'].innerHTML = "";
+            layoutZemanim();
         }
         return;
     }
@@ -1924,7 +1939,7 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     // swap below, this one deliberately does NOT cut off at midday; Chol
     // HaMoed's two מנין times are meant to show continuously all day.
     let isCHMWindow = todayIsCHM || tomorrowIsCHM;
-    let boxHeader = isCHMWindow ? 'זמני התפילה לחול המועד' : 'זמנים התפילה בימי חול';
+    let boxHeader = isCHMWindow ? 'זמני התפילות לחול המועד' : 'זמני התפילות לחול';
     let shLabel = 'שחרית', shSec = parse24ToSec(shacharisWeekday);
     if (tomorrowIsRC || (todayIsRC && isBeforeMidday)) {
         shLabel = 'שחרית ראש חודש'; shSec = parse24ToSec(shacharisRoshChodesh);
@@ -1946,7 +1961,8 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     if (minchaMaarivOverride) {
         minchaMaarivSec = parse24ToSec(minchaMaarivOverride);
     } else {
-        let weekSunday = new Date(now.getTime() - dayW*86400000);
+        // Sunday-Thursday: this week's average. From Friday morning through Shabbos: NEXT week's (Sun-Thu) average.
+        let weekSunday = new Date(now.getTime() + (dayW >= 5 ? 7 - dayW : -dayW) * 86400000);
         let total = 0, count = 0;
         for (let i = 0; i <= 4; i++) {
             let di = new Date(weekSunday.getTime() + i*86400000);
@@ -1960,9 +1976,8 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
             let avgSec    = Math.round(total / count);
             let offsetSec = (Number(minchaOffsetMinutes) || 10) * 60;
             let rawSec    = avgSec - offsetSec;
-            // Round UP to the nearest whole minute — matches how this is done
-            // by hand (e.g. an exact 8:04:09 becomes 8:05, not a truncated 8:04).
-            minchaMaarivSec = Math.ceil(rawSec / 60) * 60;
+            // Round to the nearest 5 minutes (the way it is set by hand).
+            minchaMaarivSec = Math.round(rawSec / 300) * 300;
         }
     }
 
@@ -2008,12 +2023,111 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
     rows.push(`<div class="z-row"><span class="z-label">מעריב</span><span class="z-time">${maarivSec!=null ? fmtZmanNoSec(secToTimeStr(maarivSec)) : '--:--'}</span></div>`);
 
     let html = '<div class="zemanim-header">' + boxHeader + '</div>' + rows.join('');
-    EL['ZMANIM_TEFILA'].style.flex = rows.length;
+    EL['ZMANIM_TEFILA'].style.display = '';
     if (html !== lastTefilaHTML) {
         lastTefilaHTML = html;
         EL['ZMANIM_TEFILA'].innerHTML = html;
+        layoutZemanim();
     }
 }
+
+// ── זמני התפילות לשבת — ערב שבת קודש + שבת קודש ───────────────
+// Always shows the NEXT Shabbos. dIso is the Hebrew-day-adjusted date (flips
+// at candle lighting on Friday and at Rabbeinu Tam on Saturday night), so
+// this switches to the following Shabbos once the current one is over.
+// Hidden entirely on Yom Tov (same as before — Yom Tov times are not
+// built yet) and when the coming Shabbos has no rows to show.
+var lastShabbosHTML = "";
+function renderShabbosBox(isYomTov, dIso) {
+    let el = EL['ZMANIM_SHABBOS'];
+    if (!el) return;
+    let hide = () => {
+        el.style.display = 'none';
+        if (lastShabbosHTML !== "" || el.innerHTML !== "") { lastShabbosHTML = ""; el.innerHTML = ""; layoutZemanim(); }
+    };
+    if (isYomTov) { hide(); return; }
+
+    let dp = dIso.split('-');
+    let dObj = new Date(+dp[0], +dp[1]-1, +dp[2], 12, 0, 0);
+    let satObj = new Date(dObj.getTime() + ((6 - dObj.getDay() + 7) % 7) * 86400000);
+    let friObj = new Date(satObj.getTime() - 86400000);
+    let satIso = getIso(satObj), friIso = getIso(friObj);
+    let satS = schedule[satIso], friS = schedule[friIso];
+    let satYT = !!(satS && satS.yomtov === "Y"), friYT = !!(friS && friS.yomtov === "Y");
+    let pdfFri = findPdfZmanimOverride(friIso), pdfSat = findPdfZmanimOverride(satIso);
+    let inSeason = (mo) => (mo >= 4 && mo <= 9);
+    let mkRow = (label, sec) => `<div class="z-row"><span class="z-label">${label}</span><span class="z-time">${fmtZmanNoSec(secToTimeStr(sec))}</span></div>`;
+
+    let eveItems = [], shabItems = [];
+    // Friday Mincha: summer (Apr-Sep, 7:00 default) or any time of year when
+    // the weekly PDF has a Friday Mincha time; Zeras Shimshon is 20 min before.
+    let friPdfMincha = !!(pdfFri && pdfFri.fridayMincha);
+    if (friS && (inSeason(friObj.getMonth()+1) || friPdfMincha) && !friYT && !satYT) {
+        let fmSec = getSec(friPdfMincha ? pdfFri.fridayMincha : '7:00:00', true);
+        eveItems.push({ sec: fmSec - 20*60, label: "זרע שמשון" });
+        eveItems.push({ sec: fmSec, label: "מנחה וקבלת שבת" });
+    }
+    if (satS && !satYT && satS.z && satS.z[9]) {
+        let shk = getSec(satS.z[9], true);
+        if (pdfSat && pdfSat.shacharis) shabItems.push({ sec: getSec(pdfSat.shacharis, false), label: "שחרית" });
+        shabItems.push({ sec: (pdfSat && pdfSat.shiurMinRav) ? getSec(pdfSat.shiurMinRav, true) : shk - 88*60, label: "שיעור מן הרב" });
+        shabItems.push({ sec: (pdfSat && pdfSat.mincha) ? getSec(pdfSat.mincha, true) : shk - 28*60, label: "מנחה ושלש סעודות" });
+        if (inSeason(satObj.getMonth()+1)) {
+            shabItems.push({ sec: getSec((pdfSat && pdfSat.pirkeiAvos) ? pdfSat.pirkeiAvos : '7:00:00', true), label: "פרקי אבות" });
+        }
+        shabItems.push({ sec: (pdfSat && pdfSat.maariv) ? getSec(pdfSat.maariv, true) : shk + 51*60, label: "מעריב" });
+    }
+    eveItems.sort((x, y) => x.sec - y.sec);
+    shabItems.sort((x, y) => x.sec - y.sec);
+    // אבות ובנים — editable time + on/off from the manager app (Times area); always listed last, after מעריב
+    if (shabItems.length && avosUbanimEnabled) {
+        let avSec = parse24ToSec(avosUbanimTime);
+        if (avSec != null) shabItems.push({ sec: avSec, label: "אבות ובנים" });
+    }
+    if (!eveItems.length && !shabItems.length) { hide(); return; }
+
+    let secHTML = '', nSec = 0;
+    if (eveItems.length) { secHTML += '<div class="tef-sec">ערב שבת קודש</div>' + eveItems.map(i => mkRow(i.label, i.sec)).join(''); nSec++; }
+    if (shabItems.length) { secHTML += '<div class="tef-sec">שבת קודש</div>' + shabItems.map(i => mkRow(i.label, i.sec)).join(''); nSec++; }
+    let html = '<div class="zemanim-header">זמני התפילות לשבת</div>' + secHTML;
+    el.style.display = '';
+    if (html !== lastShabbosHTML) {
+        lastShabbosHTML = html;
+        el.innerHTML = html;
+        layoutZemanim();
+    }
+}
+
+// One row height for the WHOLE column: every row in all visible zemanim boxes
+// (זמני היום, שבת, חול) is exactly the same height and the same text size.
+// Whatever space is left after the thin headers, small labels and gaps is split
+// equally between all rows, so the rows grow in winter and tighten on a
+// summer Friday, and re-adjust whenever a row appears or disappears.
+function layoutZemanim() {
+    let wrap = document.querySelector('.zemanim-col-wrap');
+    if (!wrap) return;
+    let boxes = [...wrap.querySelectorAll('.zemanim-col')].filter(b => b.style.display !== 'none' && b.querySelector('.z-row'));
+    if (!boxes.length) return;
+    let H = wrap.clientHeight;
+    if (!H) return;
+    let gap = parseFloat(getComputedStyle(wrap).rowGap) || 0;
+    let fixed = gap * (boxes.length - 1), nRows = 0;
+    boxes.forEach(b => {
+        let cs = getComputedStyle(b);
+        fixed += (b.offsetHeight - b.clientHeight) + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+        b.querySelectorAll('.zemanim-header, .tef-sec').forEach(h => { fixed += h.offsetHeight; });
+        nRows += b.querySelectorAll('.z-row').length;
+    });
+    if (!nRows) return;
+    let rh = Math.floor(((H - fixed) / nRows) * 10) / 10;
+    if (rh < 8) rh = 8;
+    let fs = Math.min(window.innerHeight * 0.036, (rh - 1) / 1.12);
+    wrap.style.setProperty('--rh', rh + 'px');
+    wrap.style.setProperty('--zfs', fs.toFixed(1) + 'px');
+    wrap.style.setProperty('--ztfs', (fs * 0.89).toFixed(1) + 'px');
+}
+window.addEventListener('resize', () => { try { layoutZemanim(); } catch(e) {} });
+window.addEventListener('load', () => { try { layoutZemanim(); } catch(e) {} });
 
 // ── MAIN UI UPDATE ────────────────────────────────────────────────
 function updateUI() {
@@ -2174,57 +2288,15 @@ function updateUI() {
     // שקיעה
     zRows.push({ id:'r10', label:'שקיעת החמה', timeStr: dDate.z[9], secVal: getSec(dDate.z[9], true) });
 
-    // Friday: מנחה וקבלת שבת + זרע שמשון — skip on Erev Shabbat Yom Tov
-    // PDF override: fridayMincha replaces the hardcoded 7:00 PM when present;
-    // זרע שמשון stays derived as 20 min before Mincha either way.
-    // Shown Apr-Sep (7:00 PM default) OR any time of year when the PDFZmanim
-    // tab (col J, fridayMincha) has a time for this week — winter Friday Mincha
-    // comes only from that column, so with no time there it stays hidden.
-    let friPdfMincha = !!(pdfOverride && pdfOverride.fridayMincha);
-    if (isFriday && (isMinchaFriSeason || friPdfMincha) && !isYomTov && !tomorrowIsYomTovForFlip) {
-        let friMinchaTime = friPdfMincha ? pdfOverride.fridayMincha : '7:00:00';
-        let friMinchaSec  = getSec(friMinchaTime, true);
-        let zeraTime      = shiftTime(friMinchaTime, -20);
-        zRows.push({ id:'r_fri_mincha', label:'מנחה וקבלת שבת', timeStr: friMinchaTime,
-            secVal: friMinchaSec });
-        zRows.push({ id:'r_zera', label:'זרע שמשון', timeStr: zeraTime,
-            secVal: friMinchaSec - 20*60 });
-    }
-
-    // Saturday: שחרית, מנחה, שיעור מן הרב, פרקי אבות — skip on Shabbat Yom Tov
-    // PDF override: each of these 4 uses the PDF value directly when present;
-    // שחרית has no formula fallback (new row, PDF-only — only shown when override exists).
-    if (isSaturday && !isYomTov) {
-        if (pdfOverride && pdfOverride.shacharis) {
-            zRows.push({ id:'r_shacharis', label:'שחרית', timeStr: pdfOverride.shacharis,
-                secVal: getSec(pdfOverride.shacharis, false) });
-        }
-
-        let shabMinchaTime = (pdfOverride && pdfOverride.mincha) ? pdfOverride.mincha : shiftTime(dDate.z[9], -28);
-        let shiurTime      = (pdfOverride && pdfOverride.shiurMinRav) ? pdfOverride.shiurMinRav : shiftTime(dDate.z[9], -88);
-        let shabMinchaSec  = (pdfOverride && pdfOverride.mincha) ? getSec(shabMinchaTime, true) : (getSec(dDate.z[9], true) - 28*60);
-        let shiurSec       = (pdfOverride && pdfOverride.shiurMinRav) ? getSec(shiurTime, true) : (getSec(dDate.z[9], true) - 88*60);
-        zRows.push({ id:'r_shab_mincha', label:'מנחה',           timeStr: shabMinchaTime, secVal: shabMinchaSec });
-        zRows.push({ id:'r_shiur',       label:'שיעור מן הרב',   timeStr: shiurTime,      secVal: shiurSec });
-        if (isPirkeySeason) {
-            let pirkeiTime = (pdfOverride && pdfOverride.pirkeiAvos) ? pdfOverride.pirkeiAvos : '7:00:00';
-            zRows.push({ id:'r_avos', label:'פרקי אבות', timeStr: pirkeiTime, secVal: getSec(pirkeiTime, true) });
-        }
-    }
-
-    // מעריב — show all of Shabbos day (from Alos Sat through 1AM Sun)
-    // PDF override: display only, uses formula derivation when no override exists.
-    let alosToday  = getSec(dToday.z[0], false);
-    let showMaariv = (dayW === 6) || (dayW === 0 && cSec < 3600);
-    if (showMaariv) {
-        let maarTime = (pdfOverride && pdfOverride.maariv) ? pdfOverride.maariv : shiftTime(dDate.z[9], 51);
-        let maarSec  = (pdfOverride && pdfOverride.maariv) ? getSec(maarTime, true) : (getSec(dDate.z[9], true) + 51*60);
-        zRows.push({ id:'r11', label:'מעריב', timeStr: maarTime, secVal: maarSec });
-    }
+    // v3.8.12: Friday Mincha / Zeras Shimshon and all Shabbos davening
+    // (Shacharis, Shiur, Mincha, Pirkei Avos, Maariv) moved out of this list
+    // into the זמני התפילות לשבת box (renderShabbosBox). Candle
+    // lighting stays here.
 
     // זמנים התפילה בימי חול — the always-visible davening box, entirely
     // separate from this sorted list (see renderTefilaBox below). Not
     // day-gated, no live highlighting, rendered independently.
+    renderShabbosBox(isYomTov, dIso);
     renderTefilaBox(now, dayW, holidayText, cSec, getSec(dToday.z[9], true) - 1800, isYomTov);
 
     // רבינו תם — always from the Zemanim sheet now (PDF override removed
@@ -2240,7 +2312,7 @@ function updateUI() {
     // with its own row count, so a row here and a row in the always-on
     // זמנים התפילה בימי חול box end up roughly the same height regardless of
     // day (Shabbos has far more rows here than a regular weekday).
-    if (EL['ZMANIM_LIST']) EL['ZMANIM_LIST'].style.flex = zRows.length;
+    if (EL['ZMANIM_LIST']) EL['ZMANIM_LIST'].style.flex = 'none';
 
     // Find next upcoming zman for highlight
     // REAL BUG, found while auditing every dDate-vs-cSec comparison after
@@ -2277,6 +2349,7 @@ function updateUI() {
             </div>`;
         }).join('');
         currentlyHighlightedId = nextId;
+        layoutZemanim();
     }
 
     let moledText   = dDate.moledDisplay || "";  // Column Y - Molad Display
@@ -2971,6 +3044,8 @@ function applyData(d) {
     tefilaBoxOff         = d.tefilaBoxOff === true;
     minchaMaarivDailyEnabled  = d.minchaMaarivDailyEnabled !== false;
     minchaMaarivSundayEnabled = d.minchaMaarivSundayEnabled === true;
+    avosUbanimEnabled    = d.avosUbanimEnabled !== false;
+    avosUbanimTime       = d.avosUbanimTime || "18:30";
 
     // RULE 19: Rabbi's Corner — only re-renders + re-sizes when text actually changes
     const rabbiEl   = document.getElementById('RABBI');
