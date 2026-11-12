@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1280, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes">
-<title>קהל חסד ואמת – Master Board v3.8.9</title>
+<title>קהל חסד ואמת – Master Board v3.8.11</title>
+<script>/* PREVIEW_ASOF: the manager-app "This Shabbos" preview opens the board with &preview=1&asof=YYYY-MM-DDTHH:MM:SS, and the board then behaves as if it were that moment. The TV never has these in its address, so it is unaffected. */
+(function(){try{var q=location.search;if(!/[?&]preview=1/.test(q))return;var m=/[?&]asof=([^&]+)/.exec(q);if(!m)return;var RD=Date,t=new RD(decodeURIComponent(m[1])).getTime();if(isNaN(t))return;var off=t-RD.now();
+class FD extends RD{constructor(...a){if(a.length===0)super(RD.now()+off);else super(...a);}static now(){return RD.now()+off;}}
+window.Date=FD;}catch(e){}})();</script>
 <script>
 // Chrome-compatible test panel loader — visiting the board with ?test=1
 // (or #test=1) appended auto-loads mobile_date_tester.js. Chrome on
@@ -2978,12 +2982,12 @@ function applyData(d) {
             if (isDvarTorah) {
                 const lines      = tefilaOverride.split("\n");
                 const parshaLine = lines.find(l => l.includes("פרשת")) || "";
-                const parshaName = parshaLine.trim();
+                const parshaName = stParse(parshaLine.trim()).text.trim();
                 const bodyText   = lines.filter(l => !l.includes("פרשת")).join("\n").trim();
                 rabbiBody.classList.add("dvar-torah");
                 if (bodyText !== lastRabbiText) {
                     lastRabbiText = bodyText;
-                    rabbiEl.innerText  = bodyText;
+                    if (/\{\{/.test(bodyText)) rabbiEl.innerHTML = stLinesHTML(bodyText, false); else rabbiEl.innerText = bodyText;
                     headerEl.innerText = "דבר תורה · " + parshaName;
                     rabbiEl.style.fontSize = "";  // clear any previous size
                     setTimeout(() => fitExpand(rabbiEl, 3.5, rabbiCornerVhMax(bodyText.length)), 200);
@@ -2992,7 +2996,7 @@ function applyData(d) {
                 rabbiBody.classList.remove("dvar-torah");
                 if (tefilaOverride !== lastRabbiText) {
                     lastRabbiText = tefilaOverride;
-                    rabbiEl.innerText  = tefilaOverride.trim();
+                    if (/\{\{/.test(tefilaOverride)) rabbiEl.innerHTML = stLinesHTML(tefilaOverride.trim(), false); else rabbiEl.innerText = tefilaOverride.trim();
                     headerEl.innerText = "הלכה יומית";
                     rabbiEl.style.fontSize = "";
                     setTimeout(() => fitExpand(rabbiEl, 3.5, rabbiCornerVhMax(tefilaOverride.trim().length)), 200);
@@ -3062,7 +3066,7 @@ function applyData(d) {
 
     // ── ANNOUNCEMENT with expiry check ────────────────────────────
     const now = new Date();
-    let annText = d.announcements || "";
+    let annText = stDropOff(d.announcements || "");
     if (annText && d.annExpiry) {
         const annExpiry = new Date(d.annExpiry);
         if (!isNaN(annExpiry.getTime()) && now > annExpiry) {
@@ -3165,7 +3169,7 @@ function normHebrewText(t, keepVowels) {
 /* ── LINE STYLES (Nov 2026): a line may start with {{c=red;b=1;f=serif}} (color, bold, font). No marker = unchanged. ── */
 var ST_FONT = { serif: "'Frank Ruhl Libre','Arial Hebrew',serif", modern: "'Heebo','Assistant',sans-serif", display: "'Suez One','Arial Hebrew',serif" };
 var ST_COL  = { red: '#C0392B', gold: '#B8860B', blue: '#1F5FA8', green: '#2E7D4F', purple: '#7B3FA0' };
-var ST_SC = { serif: 1, modern: 1, display: 0.82 };  /* size corrections so a chosen font looks the same size as the normal text; re-measured on the real fonts below */
+var ST_SC = { serif: 1.12, modern: 1.12, display: 1 };  /* size corrections so a chosen font looks the same size as the normal text; re-measured on the real fonts below */
 var ST_INIT = false;
 function stMeasure() {
     try {
@@ -3181,6 +3185,10 @@ function stInit() {
     try { Promise.all(Object.keys(ST_FONT).map(function (k) { return document.fonts.load('700 40px ' + ST_FONT[k], 'א'); })).then(stMeasure, stMeasure); } catch (e) {}
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stInit); else stInit();
+function stDropOff(t) {   /* a line marked x=1 is switched off in the manager app: not shown, but kept in the list */
+    var s = String(t == null ? '' : t); if (s.indexOf('{{') < 0) return s;
+    return s.split('\n').filter(function (l) { return !/^\{\{(?:[^}]*;)?x=1(?:;[^}]*)?\}\}/.test(l); }).join('\n');
+}
 function stParse(line) {
     var m = /^\{\{([^}]*)\}\}/.exec(line), o = { text: line, col: '', fam: '', wt: '', fk: '', sz: 1 };
     if (!m) return o;
@@ -3200,7 +3208,8 @@ function stLinesHTML(text, gold) {
         var h = p.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         if (gold && !p.col) h = h.replace(/(\b\d{1,2}:\d{2}\b)/g, '<span class="time-gold">$1</span>');
         var sc = (p.fk ? (ST_SC[p.fk] || 1) : 1) * p.sz;
-        var css = (p.col ? 'color:' + p.col + ';' : '') + (p.wt && p.fk !== 'display' ? 'font-weight:' + p.wt + ';' : '') + (p.fam ? 'font-family:' + p.fam + ';' : '') + (Math.abs(sc - 1) > 0.01 ? 'font-size:' + sc.toFixed(3) + 'em;' : '');
+        /* the boards have a rule that sizes EVERY span inside the text boxes (fixed font-size, display:block), so a styled line must override it: inline, same size as the box text, inherit whatever was not chosen */
+        var css = (p.col || p.wt || p.fam || Math.abs(sc - 1) > 0.01) ? 'display:inline;width:auto;line-height:inherit;font-size:' + sc.toFixed(3) + 'em;color:' + (p.col || 'inherit') + ';font-weight:' + ((p.wt && p.fk !== 'display') ? p.wt : 'inherit') + ';font-family:' + (p.fam || 'inherit') + ';' : '';
         return css ? '<span style="' + css + '">' + h + '</span>' : h;
     }).join('<br>');
 }
