@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1280, initial-scale=0.25, minimum-scale=0.1, maximum-scale=3.0, user-scalable=yes">
-<title>קהל חסד ואמת – Master Board v3.8.12</title>
+<title>קהל חסד ואמת – Master Board v3.8.13</title>
 <script>/* PREVIEW_ASOF: the manager-app "This Shabbos" preview opens the board with &preview=1&asof=YYYY-MM-DDTHH:MM:SS, and the board then behaves as if it were that moment. The TV never has these in its address, so it is unaffected. */
 (function(){try{var q=location.search;if(!/[?&]preview=1/.test(q))return;var m=/[?&]asof=([^&]+)/.exec(q);if(!m)return;var RD=Date,t=new RD(decodeURIComponent(m[1])).getTime();if(isNaN(t))return;var off=t-RD.now();
 class FD extends RD{constructor(...a){if(a.length===0)super(RD.now()+off);else super(...a);}static now(){return RD.now()+off;}}
@@ -1991,7 +1991,8 @@ function renderTefilaBox(now, dayW, holidayText, cSec, tachanunEveCutoff, isYomT
             let sec = getSec(sS.z[9], true);
             if (sec > 0) {
                 let offsetSec = (Number(minchaOffsetMinutes) || 10) * 60;
-                sunMinchaMaarivSec = Math.ceil((sec - offsetSec) / 60) * 60;
+                // v3.8.13: rounded to the nearest 5 minutes (was: up to the next minute), same as the weekly line
+                sunMinchaMaarivSec = Math.round((sec - offsetSec) / 300) * 300;
             }
         }
     }
